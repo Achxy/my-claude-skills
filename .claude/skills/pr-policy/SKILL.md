@@ -17,6 +17,10 @@ description: Enforces pull request standards including titles, descriptions, mer
 - [ ] Include tests for behavioral changes
 - [ ] Update documentation when interface changes
 - [ ] Maintain linear, clean commit history
+- [ ] Apply relevant labels (use existing labels; only create new ones when no existing label fits)
+- [ ] Add to the active GitHub Project board
+- [ ] Set milestone matching the issue's milestone
+- [ ] Assign the user as reviewer (unless user explicitly opted out)
 
 ## PR Title Format
 
@@ -33,6 +37,30 @@ description: Enforces pull request standards including titles, descriptions, mer
 ```
 hotfix: Critical issue description
 ```
+
+## PR Creation Command
+
+When creating a PR, apply all metadata in one command:
+
+```bash
+gh pr create \
+  --title "[#issue] Component: Imperative description" \
+  --body "..." \
+  --label "existing-label" \
+  --project "Project Name" \
+  --milestone "vX.Y" \
+  --reviewer "@me" \
+  --assignee "@me"
+```
+
+**Label rules:**
+- Use existing repository labels; rely on context to pick the right ones
+- Only create a new label when NO existing label is relevant (this should be rare)
+- Prefer specific labels over generic ones
+
+**Reviewer/assignee rules:**
+- ALWAYS assign the user themselves as reviewer (`--reviewer "@me"`) unless user explicitly asked not to
+- ALWAYS assign the user as assignee (`--assignee "@me"`) unless user explicitly opted out
 
 ## PR Description Template
 
@@ -58,6 +86,20 @@ Closes #issue-number
 ## Reviewer Notes
 Context for architectural decisions and tradeoffs.
 ```
+
+## Checkbox Management
+
+**Check boxes as work completes.** After each task in a checklist is done, update the PR body to mark it `[x]`. Use `gh pr edit` to update:
+
+```bash
+# Update PR body with checked boxes
+gh pr edit <number> --body "$(updated body with [x] marks)"
+```
+
+**Rules:**
+- Check a box ONLY when its condition is verifiably met
+- If a checkbox CANNOT be satisfied (e.g., no tests applicable), report to the user and document why in Reviewer Notes
+- Never leave stale unchecked boxes on a merged PR without explanation
 
 ## Merge Strategies
 
