@@ -31,9 +31,11 @@ gh-<issue>: <imperative description>
 ```
 
 **Examples:**
-- `gh-6: initialize uv with discord.py dependencies`
-- `gh-8: implement command registration system`
-- `gh-15: add OAuth2 token refresh logic`
+- ``gh-6: initialize `uv` with `discord.py` dependencies``
+- ``gh-8: implement command registration system``
+- ``gh-15: add OAuth2 token refresh logic``
+
+Use inline codeblocks (backtick wrapping) for filenames, flags, tool/package names, and directory paths in titles. See commit-policy for the full codeblock usage guide.
 
 **Hotfix format (no issue):**
 ```

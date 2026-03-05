@@ -34,9 +34,11 @@ Component: Imperative action description
 ```
 
 **Examples:**
-- `Project: Initialize uv with discord.py dependencies`
-- `Bot: Implement core client with intents configuration`
-- `Commands: Add slash command registration system`
+- ``Project: Initialize `uv` with `discord.py` dependencies``
+- ``Bot: Implement core client with intents configuration``
+- ``Commands: Add slash command registration system``
+
+Use inline codeblocks (backtick wrapping) for filenames, flags, tool/package names, and directory paths in titles. See commit-policy for the full codeblock usage guide.
 
 Child issues use the same format — no bracket prefixes. Parent-child relationships are expressed via sub-issue linking (GraphQL API), not title conventions.
 

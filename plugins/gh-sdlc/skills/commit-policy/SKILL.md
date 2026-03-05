@@ -52,6 +52,30 @@ gh-<issue>: <imperative summary> (#pr)
 | Hard limit | 72 characters (optimized for `git log --oneline`) |
 | Capitalization | Lowercase after type/scope prefix |
 | Punctuation | No trailing period |
+| Inline codeblocks | Use backtick-wrapped codeblocks for filenames, flags, identifiers, and tool names in commit messages. See below. |
+
+## Inline Codeblock Usage
+
+**Aggressively use inline codeblocks** (backtick wrapping) in commit messages, issue titles, PR titles, and any public-facing text for:
+
+| What to wrap | Example |
+|-------------|---------|
+| Filenames and extensions | `` `README.md` ``, `` `.gitignore` ``, `` `pyproject.toml` `` |
+| CLI flags and options | `` `--body-file` ``, `` `--force-with-lease` ``, `` `--assignee` `` |
+| Directory paths | `` `plugins/` ``, `` `src/auth/` ``, `` `.claude/` `` |
+| Function/class/variable names | `` `export_session()` ``, `` `ConfigSnapshot` `` |
+| Plugin/tool/package names | `` `ccgraft` ``, `` `gh-sdlc` ``, `` `watchdog` `` |
+| Config keys and values | `` `SINGLE_SELECT` ``, `` `settings.json` `` |
+
+**Do NOT wrap:**
+- Generic English words that happen to also be technical terms (e.g., "session", "project", "branch" when used in plain prose)
+- Issue/PR numbers (`#42`, not `` `#42` ``)
+
+**Examples:**
+- `gh-37: use `--body-file` for all issue and PR body content (#38)` — flag wrapped
+- `gh-42: add `README.md` for `gh-sdlc` plugin (#44)` — filename and plugin name wrapped
+- `docs: add MIT license and `.gitignore` (#5)` — filename wrapped
+- `gh-23: migrate `gh-sdlc` skills to `plugins/` directory (#30)` — plugin name and directory wrapped
 
 ## Type Taxonomy
 

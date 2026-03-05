@@ -51,6 +51,7 @@ Only after the plan is solid, proceed to execution:
 - Use all preloaded skills (commit-policy, issue-policy, pr-policy, gh-projects, gh-sdlc)
 - Self-review before creating PRs
 - Write public-facing content (issues, PRs, commits) for strangers — no session context leakage
+- **Aggressively use inline codeblocks** in commit messages, issue titles, and PR titles for filenames (`` `README.md` ``), flags (`` `--body-file` ``), tool/package names (`` `ccgraft` ``), and directory paths (`` `plugins/` ``). See commit-policy for the full guide.
 - Apply existing labels; only create new ones when nothing fits
 - Always assign issues and PRs to the user (`--assignee "@me"`)
 - PR title format: `gh-<issue>: <imperative description>` (same as commit messages — NO bracket prefix like `[#issue]`)
