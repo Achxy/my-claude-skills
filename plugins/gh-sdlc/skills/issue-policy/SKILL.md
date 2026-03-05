@@ -228,6 +228,26 @@ gh issue create \
 
 After creating child issues, ALWAYS link them as sub-issues of the parent (see "Issue Relationships" above).
 
+## Acceptance Criteria Checkbox Management
+
+**Tick acceptance criteria checkboxes as work progresses.** When a criterion is satisfied (code written, test passing, feature working), update the issue body to mark it `[x]`.
+
+### How to tick checkboxes
+
+```bash
+# Fetch current body, replace checkbox, update
+BODY=$(gh issue view <number> --json body -q .body)
+UPDATED=$(echo "$BODY" | sed 's/- \[ \] Criterion text/- [x] Criterion text/')
+gh issue edit <number> --body "$UPDATED"
+```
+
+### Rules
+
+- Tick each criterion as soon as it is verifiably met — don't wait until the end
+- If a criterion cannot be met, add an inline note explaining why (e.g., `- [ ] ~~N/A: no external API~~ Criterion text`)
+- Before closing an issue, all acceptance criteria must be ticked or explicitly documented as not applicable
+- Parent issue criteria should reflect child issue completion
+
 ## Enforcement
 
 - PR templates MUST require issue references

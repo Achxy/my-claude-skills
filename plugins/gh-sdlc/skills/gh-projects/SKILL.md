@@ -258,6 +258,46 @@ gh api graphql -f query='
   }) { issue { id } }}'
 ```
 
+## PR Management with Project Context
+
+PRs are first-class project items just like issues. They should be added to the project board, assigned fields, and tracked through their lifecycle.
+
+### Add PR to Project
+
+```bash
+PR_URL=$(gh pr view <number> --json url -q .url)
+ITEM_ID=$(gh project item-add <project-number> --owner "@me" --url "$PR_URL" --format json --jq '.id')
+
+# Set status, priority, and other fields
+gh project item-edit --id "$ITEM_ID" --field-id "$STATUS_FIELD_ID" --project-id "$PROJECT_ID" \
+  --single-select-option-id "$IN_REVIEW_OPTION_ID"
+gh project item-edit --id "$ITEM_ID" --field-id "$PRIORITY_FIELD_ID" --project-id "$PROJECT_ID" \
+  --single-select-option-id "$PRIORITY_OPTION_ID"
+```
+
+### PR Lifecycle on Project Board
+
+| PR State | Project Status |
+|----------|---------------|
+| Opened / Draft | In Progress |
+| Ready for review | In Review |
+| Merged | Done |
+| Closed without merge | Remove or archive |
+
+### PR Metadata
+
+When creating PRs, attach project metadata directly:
+
+```bash
+gh pr create \
+  --title "[#issue] Component: Description" \
+  --body "..." \
+  --project "Project Name" \
+  --milestone "v1.0" \
+  --label "feature" \
+  --assignee "@me"
+```
+
 ## Issue Management with Project Context
 
 ### Create Issue with Full Metadata
