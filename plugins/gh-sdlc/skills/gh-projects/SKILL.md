@@ -291,7 +291,7 @@ When creating PRs, attach project metadata directly:
 ```bash
 gh pr create \
   --title "[#issue] Component: Description" \
-  --body "..." \
+  --body-file /tmp/pr-body.md \
   --project "Project Name" \
   --milestone "v1.0" \
   --label "feature" \
@@ -301,9 +301,12 @@ gh pr create \
 ## Issue Management with Project Context
 
 ### Create Issue with Full Metadata
+
+Always use `--body-file` for issue bodies to avoid shell corruption of markdown:
+
 ```bash
-gh issue create --title "Auth: Implement OAuth2 flow" \
-  --body "## Problem Statement
+cat > /tmp/issue-body.md <<'EOF'
+## Problem Statement
 OAuth2 needed for third-party auth.
 
 ## Acceptance Criteria
@@ -312,10 +315,16 @@ OAuth2 needed for third-party auth.
 - [ ] Tests pass
 
 ## Technical Scope
-**Files:** \`src/auth/\`, \`tests/test_auth.py\`" \
+**Files:** `src/auth/`, `tests/test_auth.py`
+EOF
+
+gh issue create --title "Auth: Implement OAuth2 flow" \
+  --body-file /tmp/issue-body.md \
   --label "feature,P1-high" \
   --milestone "v1.0" \
   --assignee "@me"
+
+rm /tmp/issue-body.md
 ```
 
 ### Add Issue to Project

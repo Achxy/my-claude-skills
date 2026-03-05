@@ -40,18 +40,36 @@ hotfix: Critical issue description
 
 ## PR Creation Command
 
-When creating a PR, apply all metadata in one command:
+When creating a PR, apply all metadata in one command. **Always use `--body-file`** to pass the PR body — never inline markdown in `--body "..."` because backticks, code blocks, and special characters get mangled by shell interpretation.
 
 ```bash
+# Write body to temp file (markdown is preserved exactly)
+cat > /tmp/pr-body.md <<'EOF'
+## Changes
+Brief technical summary.
+
+Closes #issue-number
+
+## Testing
+- [ ] Tests pass
+
+## Checklist
+- [ ] Self-reviewed diff
+EOF
+
 gh pr create \
   --title "[#issue] Component: Imperative description" \
-  --body "..." \
+  --body-file /tmp/pr-body.md \
   --label "existing-label" \
   --project "Project Name" \
   --milestone "vX.Y" \
   --reviewer "@me" \
   --assignee "@me"
+
+rm /tmp/pr-body.md
 ```
+
+**Why `--body-file`?** The `--body` flag passes through shell expansion, which corrupts backticks (`` ` ``), code fences (` ``` `), and `$` in markdown. Writing to a file first with a single-quoted heredoc (`<<'EOF'`) preserves content exactly.
 
 **Label rules:**
 - Use existing repository labels; rely on context to pick the right ones
@@ -134,28 +152,30 @@ Closing keywords are **ignored** by GitHub when the PR doesn't target the defaul
 
 ### How to tick checkboxes
 
-Fetch the current body, replace the checkbox text, and update:
+Fetch the current body, apply sed replacements, write to a temp file, and update via `--body-file`:
 
 ```bash
 # Tick a checkbox on a PR
-BODY=$(gh pr view <number> --json body -q .body)
-UPDATED=$(echo "$BODY" | sed 's/- \[ \] Unit tests added/- [x] Unit tests added/')
-gh pr edit <number> --body "$UPDATED"
+gh pr view <number> --json body -q .body \
+  | sed 's/- \[ \] Unit tests added/- [x] Unit tests added/' \
+  > /tmp/updated-body.md
+gh pr edit <number> --body-file /tmp/updated-body.md
 
 # Tick a checkbox on an issue
-BODY=$(gh issue view <number> --json body -q .body)
-UPDATED=$(echo "$BODY" | sed 's/- \[ \] Criterion one/- [x] Criterion one/')
-gh issue edit <number> --body "$UPDATED"
+gh issue view <number> --json body -q .body \
+  | sed 's/- \[ \] Criterion one/- [x] Criterion one/' \
+  > /tmp/updated-body.md
+gh issue edit <number> --body-file /tmp/updated-body.md
 ```
 
-**For multiple checkboxes**, chain the replacements:
+**For multiple checkboxes**, chain the sed replacements:
 
 ```bash
-BODY=$(gh pr view <number> --json body -q .body)
-UPDATED=$(echo "$BODY" \
+gh pr view <number> --json body -q .body \
   | sed 's/- \[ \] Unit tests added/- [x] Unit tests added/' \
-  | sed 's/- \[ \] Self-reviewed diff/- [x] Self-reviewed diff/')
-gh pr edit <number> --body "$UPDATED"
+  | sed 's/- \[ \] Self-reviewed diff/- [x] Self-reviewed diff/' \
+  > /tmp/updated-body.md
+gh pr edit <number> --body-file /tmp/updated-body.md
 ```
 
 **Rules:**

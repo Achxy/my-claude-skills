@@ -301,9 +301,9 @@ Given: `/gh-sdlc Add user authentication`
 
 **Step 1 — Plan (issue-policy + gh-projects):**
 ```bash
-# Create parent issue
-gh issue create --title "Auth: Implement user authentication system" \
-  --body "## Problem Statement
+# Write parent issue body to temp file (preserves markdown exactly)
+cat > /tmp/issue-body.md <<'EOF'
+## Problem Statement
 Application needs user authentication.
 
 ## Acceptance Criteria
@@ -313,16 +313,25 @@ Application needs user authentication.
 - [ ] Tests pass
 
 ## Technical Scope
-**Files:** \`src/auth/\`, \`tests/test_auth.py\`
+**Files:** `src/auth/`, `tests/test_auth.py`
+
 ---
+
 ## Sub-Issues
-\`\`\`mermaid
+```mermaid
 graph TD
     A[#10 User Authentication] --> B[#11 OAuth2 Client]
     A --> C[#12 Token Refresh]
     A --> D[#13 Session Management]
-\`\`\`" \
+```
+EOF
+
+# Create parent issue
+gh issue create --title "Auth: Implement user authentication system" \
+  --body-file /tmp/issue-body.md \
   --label "feature,P1-high" --milestone "v1.0"
+
+rm /tmp/issue-body.md
 
 # Create child issues (linked via sub-issue API, not title prefix)
 gh issue create --title "Auth: Set up OAuth2 client" --label "feature" --milestone "v1.0"
@@ -351,9 +360,9 @@ git commit -m "gh-11: add OAuth2 client tests"
 git rebase -i --autosquash origin/main
 git push --force-with-lease
 
-# Create PR with full metadata
-gh pr create --title "[#11] Auth: Set up OAuth2 client" \
-  --body "## Changes
+# Write PR body to temp file
+cat > /tmp/pr-body.md <<'EOF'
+## Changes
 - OAuth2 client with PKCE support
 - Configuration via environment variables
 
@@ -366,11 +375,18 @@ Closes #11
 ## Checklist
 - [ ] Self-reviewed diff
 - [ ] No debugging artifacts
-- [ ] Commit history is clean" \
+- [ ] Commit history is clean
+EOF
+
+# Create PR with full metadata
+gh pr create --title "[#11] Auth: Set up OAuth2 client" \
+  --body-file /tmp/pr-body.md \
   --label "feature" \
   --project "Project Name" \
   --milestone "v1.0" \
   --assignee "@me"
+
+rm /tmp/pr-body.md
 
 # Add PR to project board and set fields
 PR_URL=$(gh pr view 20 --json url -q .url)
@@ -378,9 +394,10 @@ ITEM_ID=$(gh project item-add 1 --owner "@me" --url "$PR_URL" --format json --jq
 # Set status to "In Review", priority matching issue, etc.
 
 # Tick issue acceptance criteria as satisfied
-BODY=$(gh issue view 11 --json body -q .body)
-UPDATED=$(echo "$BODY" | sed 's/- \[ \] OAuth2 client configured/- [x] OAuth2 client configured/')
-gh issue edit 11 --body "$UPDATED"
+gh issue view 11 --json body -q .body \
+  | sed 's/- \[ \] OAuth2 client configured/- [x] OAuth2 client configured/' \
+  > /tmp/updated-body.md
+gh issue edit 11 --body-file /tmp/updated-body.md
 ```
 
 **Step 4 — Merge (pr-policy + gh-projects):**

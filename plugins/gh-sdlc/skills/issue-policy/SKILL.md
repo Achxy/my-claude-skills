@@ -215,15 +215,30 @@ Apply labels consistently:
 
 ## Issue Creation Command
 
-Always include assignment, labels, and milestone:
+Always use `--body-file` to pass issue bodies — never inline markdown in `--body "..."` because backticks, code blocks, and special characters get mangled by shell interpretation.
 
 ```bash
+# Write body to temp file (markdown is preserved exactly)
+cat > /tmp/issue-body.md <<'EOF'
+## Problem Statement
+Description of what needs to be done and why.
+
+## Acceptance Criteria
+- [ ] Criterion one
+- [ ] Criterion two
+
+## Technical Scope
+**Files:** `src/module/`, `tests/test_module.py`
+EOF
+
 gh issue create \
   --title "Component: Action description" \
-  --body "..." \
+  --body-file /tmp/issue-body.md \
   --label "feature" \
   --milestone "vX.Y" \
   --assignee "@me"
+
+rm /tmp/issue-body.md
 ```
 
 After creating child issues, ALWAYS link them as sub-issues of the parent (see "Issue Relationships" above).
@@ -235,10 +250,11 @@ After creating child issues, ALWAYS link them as sub-issues of the parent (see "
 ### How to tick checkboxes
 
 ```bash
-# Fetch current body, replace checkbox, update
-BODY=$(gh issue view <number> --json body -q .body)
-UPDATED=$(echo "$BODY" | sed 's/- \[ \] Criterion text/- [x] Criterion text/')
-gh issue edit <number> --body "$UPDATED"
+# Fetch current body, apply sed, write to temp file, update via --body-file
+gh issue view <number> --json body -q .body \
+  | sed 's/- \[ \] Criterion text/- [x] Criterion text/' \
+  > /tmp/updated-body.md
+gh issue edit <number> --body-file /tmp/updated-body.md
 ```
 
 ### Rules
