@@ -26,12 +26,16 @@ Every development task flows through these phases. Apply the relevant skill(s) a
 2. **Create parent issue** if work is non-trivial:
    - Title: `Component: Imperative action description`
    - Body: Problem statement, acceptance criteria, technical scope
+   - Assign to user (`--assignee "@me"`)
 3. **Decompose** into child issues if complex:
    - Each child: single concern, one PR, title prefixed `[#parent-id]`
+   - Assign each child to user (`--assignee "@me"`)
    - Add Mermaid diagram to parent
+   - **Link as sub-issues** via GraphQL API (not just title prefix)
+   - Mark dependencies (blocked by/blocking) where execution order matters
 4. **Set up project tracking:**
    - Add issues to project board (`gh project item-add`)
-   - Apply labels: type (`feature`, `bug`) + priority (`P0`-`P3`)
+   - Apply labels: use existing labels, only create when no match exists
    - Assign milestone
    - Set custom field values (Status, Priority, Story Points)
 5. **Create branches:**
@@ -68,10 +72,13 @@ Every development task flows through these phases. Apply the relevant skill(s) a
 3. **Create PR:**
    - Title: `[#issue] Component: Imperative description`
    - Body: Changes, issue reference (`Closes #N`), testing, checklist
+   - Apply labels (existing ones), set project, set milestone
+   - Assign user as reviewer (`--reviewer "@me"`) and assignee
    - Size: Aim for < 200 lines changed
 4. **Update project board:**
    - Move item status to "In Review"
    - Ensure labels reflect current state
+5. **Check boxes** as each item completes. Report any that cannot be satisfied.
 
 ### Phase 4: Review & Merge (pr-policy + commit-policy)
 
