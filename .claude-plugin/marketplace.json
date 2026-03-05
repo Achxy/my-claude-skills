@@ -1,0 +1,42 @@
+{
+  "name": "dotclaude",
+  "owner": {
+    "name": "Achyuth Jayadevan",
+    "email": "achyuth@jayadevan.in"
+  },
+  "metadata": {
+    "description": "A curated collection of Claude Code plugins: skills, agents, hooks, and commands for development workflows.",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "gh-sdlc",
+      "source": "./plugins/gh-sdlc",
+      "description": "Slightly overkilled GitHub SDLC workflow: issue, project, branch, commit, PR, merge, track. Includes 5 policy skills and an autonomous shipping agent.",
+      "version": "1.0.0",
+      "keywords": [
+        "github",
+        "sdlc",
+        "workflow",
+        "issues",
+        "pull-requests",
+        "project-management"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "ccgraft",
+      "source": "./plugins/ccgraft",
+      "description": "Export, import, and restore Claude Code sessions. Portable session sharing and archival.",
+      "version": "1.0.0",
+      "keywords": [
+        "session",
+        "export",
+        "import",
+        "backup",
+        "graft"
+      ],
+      "category": "utilities"
+    }
+  ]
+}
