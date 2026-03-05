@@ -26,15 +26,19 @@ user-invocable: true
 
 ## Use Cases
 
-There are two ways users invoke this workflow:
+There are two ways users invoke this workflow, each with a different execution strategy:
 
 ### A) Upfront: Plan + Implement + Ship
 The user invokes `/gh-sdlc <objective>` or describes an objective alongside the SDLC trigger BEFORE starting work. Run the full pipeline from Phase 1 (planning) through Phase 5 (tracking), including implementation.
 
-### B) Retroactive: Ship completed work
-The user has already done the work (code is written, changes exist) and now invokes `/gh-sdlc` or says "commit" / "ship it" to formalize it. Analyze the session's completed work (git diff, changed files, session context) and run the full pipeline — proper decomposition, issues, project tracking, commits, PR, merge. Do NOT skip steps just because code already exists.
+**Execution:** The current model handles everything directly — no subagent.
 
-**In both cases**, proper decomposition, issue creation, project tracking, branching, atomic commits, and PR creation MUST happen. The only difference is whether implementation occurs during the workflow (A) or has already occurred before it (B).
+### B) Retroactive: Ship completed work
+The user has already done the work (code is written, changes exist) and now invokes `/gh-sdlc` or says "commit" / "ship it" to formalize it.
+
+**Execution:** Delegate to the `sdlc-shipper` subagent. This subagent uses the latest Haiku model (see [model overview](https://platform.claude.com/docs/en/about-claude/models/overview) — always use the `haiku` alias, never hardcode a model ID) and has all five skills preloaded (commit-policy, issue-policy, pr-policy, gh-projects, gh-sdlc). It will dissect the changes, aggressively decompose, and run the full SDLC pipeline autonomously.
+
+**In both cases**, proper decomposition, issue creation, project tracking, branching, atomic commits, and PR creation MUST happen. The only difference is whether implementation occurs during the workflow (A) or has already occurred before it (B), and whether the current model or the `sdlc-shipper` subagent executes the pipeline.
 
 ## Interaction Mode
 
@@ -65,7 +69,11 @@ Make all decisions autonomously. No questions asked. Use best judgment for:
 
 Just get it done.
 
+**Delegation:** When no objective is provided (Use Case B), yolo mode delegates to the `sdlc-shipper` subagent, which always operates in yolo mode.
+
 ### Interactive Mode
+
+**Delegation:** Interactive mode always runs in the current model (never delegates to the subagent), even for Use Case B. The user wants to be consulted at each step, which requires foreground interaction.
 
 Use `AskUserQuestion` at each decision point. Present all relevant options, choices, and alternatives with context. Key decision points:
 
@@ -86,6 +94,94 @@ Issue decomposition — this work touches auth config and token refresh.
 
 Which decomposition? (default: 2)
 ```
+
+## Visualization & Communication
+
+Use Mermaid diagrams, diffs, and codeblocks to communicate plans and progress — but only where they genuinely help. Don't force visuals onto simple tasks.
+
+### When to use what:
+
+| Situation | Tool |
+|-----------|------|
+| Complex branching plan (multiple sub-branches, remotes, parallel work) | **GitGraph** — show the branch/merge plan before linearization |
+| Issue decomposition with dependencies | **Flowchart** (`graph TD`) — show parent→child relationships and blocked-by edges |
+| State transitions (issue lifecycle, PR stages) | **State Diagram** — show how items flow through statuses |
+| Workflow sequence (who does what when) | **Sequence Diagram** — show agent/human/CI interactions |
+| Proposing code changes before making them | **Diff codeblocks** (` ```diff `) — show what will change |
+| Explaining architecture or module relationships | **Mindmap**, **Block Diagram**, or **C4 Diagram** |
+| Tracking parallel workstreams | **Kanban** — visualize what's in progress |
+
+### GitGraph for complex branching
+
+When a task involves multiple sub-issues with sub-branches, show the branching plan with a gitgraph before execution. This helps the user see the full picture before it gets linearized into squash merges on main.
+
+Example for a 3-child decomposition:
+````markdown
+```mermaid
+gitgraph
+    commit id: "main"
+    branch feature/10-auth
+    checkout feature/10-auth
+    branch feature/10/11-oauth2-client
+    checkout feature/10/11-oauth2-client
+    commit id: "gh-11: add OAuth2 config"
+    commit id: "gh-11: implement auth flow"
+    checkout feature/10-auth
+    merge feature/10/11-oauth2-client id: "PR #20 → squash"
+    branch feature/10/12-token-refresh
+    checkout feature/10/12-token-refresh
+    commit id: "gh-12: add token refresh"
+    checkout feature/10-auth
+    merge feature/10/12-token-refresh id: "PR #21 → squash"
+    branch feature/10/13-sessions
+    checkout feature/10/13-sessions
+    commit id: "gh-13: add session mgmt"
+    checkout feature/10-auth
+    merge feature/10/13-sessions id: "PR #22 → squash"
+    checkout main
+    merge feature/10-auth id: "PR #23 → squash"
+```
+````
+
+### Diff codeblocks for proposed changes
+
+When presenting what will change (interactive mode especially), use diff syntax:
+````markdown
+```diff
+- description: Enforces commit message formatting standards. Activates on any git commit.
++ description: "Commit message formatting standards (part of gh-sdlc). Does NOT auto-activate."
+```
+````
+
+### Flowcharts for issue decomposition
+
+Already required in parent issue bodies (see issue-policy). Use `graph TD` with `-->` for parent→child and `-.->` for dependency edges:
+````markdown
+```mermaid
+graph TD
+    A[#10 Auth System] --> B[#11 OAuth2 Client]
+    A --> C[#12 Token Refresh]
+    A --> D[#13 Session Mgmt]
+    B -.->|blocks| C
+```
+````
+
+### Guidelines
+
+- **Don't visualize simple tasks.** A single-issue, single-branch change doesn't need a gitgraph.
+- **Don't visualize milestones/releases as timelines.** No Gantt or Timeline diagrams for release scheduling.
+- **Do visualize before executing** in interactive mode — show the plan, get approval, then run.
+- **Do use inline codeblocks** for issue numbers (`#14`), branch names (`feature/10/11-oauth2`), and commit messages (`gh-11: add config`) in prose.
+
+## Optics & Public-Facing Content
+
+Issues, PRs, commit messages, and project board entries are **public artifacts**. They must be self-contained and meaningful to any reader — not just the agent and user who discussed them.
+
+**Rules:**
+- **Omit session context.** Don't reference intermediary conversations, corrections, or back-and-forth between agent and user. If the user asked to remove something and then add it back, the issue should only describe the final state — not the journey.
+- **No internal jargon.** If a term only makes sense because of a prior conversation (e.g., "remove V2 references" when V2 was never a public concept), leave it out.
+- **Write for a stranger.** Every issue, PR, and commit message should make sense to someone who has never seen the conversation that produced it.
+- **Focus on the what and why, not the how-we-got-here.** Acceptance criteria describe the desired outcome, not the debugging steps that led to it.
 
 ## Coordinated Skills
 
