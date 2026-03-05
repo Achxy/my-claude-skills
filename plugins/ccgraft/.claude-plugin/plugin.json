@@ -1,0 +1,19 @@
+{
+  "name": "ccgraft",
+  "description": "Export, import, and restore Claude Code sessions. Portable session sharing and archival with manifest validation, UUID regeneration, and pre-import snapshots.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Achyuth Jayadevan",
+    "email": "achyuth@jayadevan.in"
+  },
+  "repository": "https://github.com/Achxy/dotclaude",
+  "license": "MIT",
+  "keywords": [
+    "session",
+    "export",
+    "import",
+    "backup",
+    "graft",
+    "sharing"
+  ]
+}
