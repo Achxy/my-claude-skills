@@ -1,6 +1,6 @@
 ---
 name: pr-policy
-description: Enforces pull request standards including titles, descriptions, merge strategies, branch management, and review process. Use when creating PRs, reviewing PRs, managing branches, rebasing, or preparing code for merge. Activates on PR creation, review, or merge operations.
+description: "Pull request standards and merge strategies (part of gh-sdlc). Provides formatting rules for PRs — only applies when PRs are actually being created as part of the /gh-sdlc workflow. Does NOT auto-activate on its own."
 ---
 
 # Pull Request Policy
@@ -59,8 +59,8 @@ gh pr create \
 - Prefer specific labels over generic ones
 
 **Reviewer/assignee rules:**
-- ALWAYS assign the user themselves as reviewer (`--reviewer "@me"`) unless user explicitly asked not to
 - ALWAYS assign the user as assignee (`--assignee "@me"`) unless user explicitly opted out
+- Attempt to add user as reviewer (`--reviewer <username>`) — note: `@me` is not supported for `--reviewer`, use the actual username. GitHub may reject self-review requests on some plans; this is acceptable.
 
 ## PR Description Template
 

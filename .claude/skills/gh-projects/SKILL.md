@@ -1,10 +1,10 @@
 ---
 name: gh-projects
-description: Manages GitHub Projects V2 with full coverage — project lifecycle, fields, items, labels, milestones, iterations, views, and repository linking. Use when planning work, managing project boards, creating/editing issues with project metadata, setting up milestones, or organizing work with labels. Activates on any project management, milestone, label, or work planning task.
+description: "GitHub Projects management reference (part of gh-sdlc). Provides commands for project boards, fields, items, labels, milestones — only applies when project management is needed as part of the /gh-sdlc workflow. Does NOT auto-activate on its own."
 allowed-tools: Bash(gh *), Bash(git *)
 ---
 
-# GitHub Projects V2 Management
+# GitHub Projects Management
 
 Comprehensive project management using `gh` CLI and GitHub MCP Server. Use `gh` CLI as the primary tool; fall back to `gh api` for operations not covered by first-class commands (milestones, advanced queries).
 

@@ -1,6 +1,6 @@
 ---
 name: issue-policy
-description: Enforces GitHub issue creation, hierarchy, and decomposition standards. Use when creating issues, planning features, decomposing work, or structuring parent-child issue relationships. Activates on issue creation, project planning, or work breakdown tasks.
+description: "GitHub issue creation and hierarchy standards (part of gh-sdlc). Provides formatting rules for issues — only applies when issues are actually being created as part of the /gh-sdlc workflow. Does NOT auto-activate on its own."
 ---
 
 # GitHub Issue Policy

@@ -1,6 +1,6 @@
 ---
 name: commit-policy
-description: Enforces commit message formatting standards. Use when creating commits, reviewing commit history, cleaning up commit messages, or rebasing. Activates on any git commit, amend, rebase, or history cleanup operation.
+description: "Commit message formatting standards (part of gh-sdlc). Provides formatting rules for git commits — only applies when commits are actually being created. Does NOT trigger the full SDLC workflow on its own."
 ---
 
 # Commit Message Policy
