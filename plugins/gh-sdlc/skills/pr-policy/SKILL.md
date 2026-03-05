@@ -87,29 +87,100 @@ Closes #issue-number
 Context for architectural decisions and tradeoffs.
 ```
 
-## Checkbox Management
+## PR Project Tracking
 
-**Check boxes as work completes.** After each task in a checklist is done, update the PR body to mark it `[x]`. Use `gh pr edit` to update:
+PRs are project artifacts just like issues. They should be tracked on the project board with full metadata.
+
+### Adding PR to Project
+
+After creating a PR, add it to the project board and set fields:
 
 ```bash
-# Update PR body with checked boxes
-gh pr edit <number> --body "$(updated body with [x] marks)"
+# Add PR to project
+PR_URL=$(gh pr view <number> --json url -q .url)
+ITEM_ID=$(gh project item-add <project-number> --owner "@me" --url "$PR_URL" --format json --jq '.id')
+
+# Set status to "In Review"
+gh project item-edit --id "$ITEM_ID" --field-id "$STATUS_FIELD_ID" --project-id "$PROJECT_ID" \
+  --single-select-option-id "$IN_REVIEW_OPTION_ID"
+```
+
+### PR Metadata Checklist
+
+Every PR must have:
+- **Project**: Added to the active project board
+- **Milestone**: Same milestone as its linked issue
+- **Labels**: Matching issue labels
+- **Development link**: Issue linked via `Closes #N` in body (auto-links in GitHub's Development sidebar)
+- **Assignee**: The user (`--assignee "@me"`)
+- **Reviewer**: The user or designated reviewer
+
+## Checkbox Management
+
+**Check boxes as work completes.** After each task in a checklist is done, update the issue or PR body to replace `- [ ]` with `- [x]`. This applies to both PR checklists and issue acceptance criteria.
+
+### How to tick checkboxes
+
+Fetch the current body, replace the checkbox text, and update:
+
+```bash
+# Tick a checkbox on a PR
+BODY=$(gh pr view <number> --json body -q .body)
+UPDATED=$(echo "$BODY" | sed 's/- \[ \] Unit tests added/- [x] Unit tests added/')
+gh pr edit <number> --body "$UPDATED"
+
+# Tick a checkbox on an issue
+BODY=$(gh issue view <number> --json body -q .body)
+UPDATED=$(echo "$BODY" | sed 's/- \[ \] Criterion one/- [x] Criterion one/')
+gh issue edit <number> --body "$UPDATED"
+```
+
+**For multiple checkboxes**, chain the replacements:
+
+```bash
+BODY=$(gh pr view <number> --json body -q .body)
+UPDATED=$(echo "$BODY" \
+  | sed 's/- \[ \] Unit tests added/- [x] Unit tests added/' \
+  | sed 's/- \[ \] Self-reviewed diff/- [x] Self-reviewed diff/')
+gh pr edit <number> --body "$UPDATED"
 ```
 
 **Rules:**
 - Check a box ONLY when its condition is verifiably met
-- If a checkbox CANNOT be satisfied (e.g., no tests applicable), report to the user and document why in Reviewer Notes
-- Never leave stale unchecked boxes on a merged PR without explanation
+- Tick issue acceptance criteria as each criterion is satisfied during implementation
+- Tick PR checklist items as each condition is confirmed before/after merge
+- If a checkbox CANNOT be satisfied (e.g., no tests applicable), note why in Reviewer Notes and either remove the checkbox or leave it unchecked with an inline explanation
+- Never leave stale unchecked boxes on a merged PR or closed issue without explanation
 
 ## Merge Strategies
 
-### Default: Squash and Merge
+### Default: Rebase and Merge
+
+**Always prefer rebase merge** to maintain a clean linear history where every commit on main is meaningful and passes tests independently.
 
 Use for:
-- Feature branches with messy history
-- Multiple WIP commits during development
-- PRs from external contributors
-- Single-issue, single-concept PRs
+- PRs with clean, atomic commit history (the standard case)
+- Each commit represents a distinct logical step
+- Commit messages follow the format guide
+- No broken intermediary commits
+
+**Requirements:**
+- Each commit passes tests independently
+- Commit messages follow format guide
+- No "fix typo" or "address review" commits (use fixup workflow)
+- Linear history without merge commits
+
+```bash
+gh pr merge <number> --rebase --delete-branch
+```
+
+### When: Squash and Merge
+
+Use **only** when the branch has broken intermediary commits that cannot be cleaned up:
+- Multiple WIP commits that weren't rebased before review
+- History littered with "fix typo", "oops", "address review" commits
+- External contributor PRs where you can't rewrite history
+- Commits that don't individually pass tests
 
 **Squash commit message format:**
 ```
@@ -122,19 +193,11 @@ gh-<issue>: <imperative description> (#pr)
 Co-authored-by: Reviewer Name <email>
 ```
 
-### When: Rebase and Merge
+```bash
+gh pr merge <number> --squash --delete-branch
+```
 
-Use ONLY when:
-- PR has intentionally structured commit history
-- Each commit represents a distinct logical step
-- Commits are already clean and atomic
-- Preserving granular history adds value
-
-**Requirements:**
-- Each commit passes tests independently
-- Commit messages follow format guide
-- No "fix typo" or "address review" commits
-- Linear history without merge commits
+**Rule of thumb:** If you followed the fixup workflow during development and rebased before marking ready, you should never need squash. Squash is a fallback for messy history, not the default.
 
 ### Never: Merge Commit
 
@@ -159,7 +222,7 @@ Use ONLY when:
 2. Implement changes
 3. Push and open PR
 4. Review feedback loop (address and force push cleaned history)
-5. Squash merge to `main`
+5. Rebase merge to `main` (squash only if intermediaries are broken)
 6. Delete branch
 
 ### Hierarchical Branches

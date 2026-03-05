@@ -127,19 +127,19 @@ gitgraph
     commit id: "gh-11: add OAuth2 config"
     commit id: "gh-11: implement auth flow"
     checkout feature/10-auth
-    merge feature/10/11-oauth2-client id: "PR #20 → squash"
+    merge feature/10/11-oauth2-client id: "PR #20 → rebase"
     branch feature/10/12-token-refresh
     checkout feature/10/12-token-refresh
     commit id: "gh-12: add token refresh"
     checkout feature/10-auth
-    merge feature/10/12-token-refresh id: "PR #21 → squash"
+    merge feature/10/12-token-refresh id: "PR #21 → rebase"
     branch feature/10/13-sessions
     checkout feature/10/13-sessions
     commit id: "gh-13: add session mgmt"
     checkout feature/10-auth
-    merge feature/10/13-sessions id: "PR #22 → squash"
+    merge feature/10/13-sessions id: "PR #22 → rebase"
     checkout main
-    merge feature/10-auth id: "PR #23 → squash"
+    merge feature/10-auth id: "PR #23 → rebase"
 ```
 ````
 
@@ -244,16 +244,17 @@ This workflow orchestrates four policy skills:
    git rebase -i --autosquash origin/main
    ```
 2. **Self-review checklist** (pr-policy)
-3. **Create PR:**
+3. **Create PR** with full metadata:
    - Title: `[#issue] Component: Imperative description`
    - Body: Changes, issue reference (`Closes #N`), testing, checklist
-   - Apply labels (existing ones), set project, set milestone
-   - Assign user as reviewer (`--reviewer <username>`) and assignee
+   - Apply labels (existing ones), set project (`--project`), set milestone (`--milestone`)
+   - Assign user as reviewer (`--reviewer <username>`) and assignee (`--assignee "@me"`)
    - Size: Aim for < 200 lines changed
-4. **Update project board:**
-   - Move item status to "In Review"
-   - Ensure labels reflect current state
-5. **Check boxes** as each item completes. Report any that cannot be satisfied.
+4. **Add PR to project board:**
+   - Add PR via `gh project item-add` (PRs are trackable items, not just issues)
+   - Set item status to "In Review"
+   - Set priority and other custom fields matching the linked issue
+5. **Tick checkboxes** on the linked issue's acceptance criteria as each is satisfied. Tick PR checklist items as confirmed. Use `gh issue edit`/`gh pr edit --body` to update (see pr-policy checkbox management).
 
 ### Phase 4: Review & Merge (pr-policy + commit-policy)
 
@@ -262,12 +263,13 @@ This workflow orchestrates four policy skills:
    - Substantial: new commit with proper message
 2. **Before merge:** Squash all fixups: `git rebase -i --autosquash origin/main`
 3. **Merge strategy selection:**
-   - Default: **Squash and merge** (one commit per PR in main)
-   - Rebase merge: Only if commit history is intentionally structured
+   - Default: **Rebase and merge** — maintains linear history with every commit visible on main
+   - Squash merge: **Only** when branch has broken intermediary commits (WIP, untested, messy)
    - **Never** merge commits
 4. **Post-merge cleanup:**
    - Delete feature branch
-   - Update project board: move to "Done"
+   - Update project board: move PR and issue items to "Done"
+   - Tick remaining checkboxes on issue acceptance criteria and PR checklist
    - Close child issue (auto-closes via `Closes #N`)
    - Check if parent issue can close (all children done)
 
@@ -349,7 +351,7 @@ git commit -m "gh-11: add OAuth2 client tests"
 git rebase -i --autosquash origin/main
 git push --force-with-lease
 
-# Create PR
+# Create PR with full metadata
 gh pr create --title "[#11] Auth: Set up OAuth2 client" \
   --body "## Changes
 - OAuth2 client with PKCE support
@@ -360,15 +362,38 @@ Closes #11
 
 ## Testing
 - [ ] Unit tests added
-- [ ] Integration test passes"
+- [ ] Integration test passes
+
+## Checklist
+- [ ] Self-reviewed diff
+- [ ] No debugging artifacts
+- [ ] Commit history is clean" \
+  --label "feature" \
+  --project "Project Name" \
+  --milestone "v1.0" \
+  --assignee "@me"
+
+# Add PR to project board and set fields
+PR_URL=$(gh pr view 20 --json url -q .url)
+ITEM_ID=$(gh project item-add 1 --owner "@me" --url "$PR_URL" --format json --jq '.id')
+# Set status to "In Review", priority matching issue, etc.
+
+# Tick issue acceptance criteria as satisfied
+BODY=$(gh issue view 11 --json body -q .body)
+UPDATED=$(echo "$BODY" | sed 's/- \[ \] OAuth2 client configured/- [x] OAuth2 client configured/')
+gh issue edit 11 --body "$UPDATED"
 ```
 
 **Step 4 — Merge (pr-policy + gh-projects):**
 ```bash
-# After approval, squash merge
-# Update project: item → "Done"
-# Delete branch
-git branch -d feature/10/11-oauth2-client
+# Rebase merge (default — clean atomic commits preserved on main)
+gh pr merge 20 --rebase --delete-branch
+
+# Squash merge ONLY if intermediary commits are broken
+# gh pr merge 20 --squash --delete-branch
+
+# Tick remaining checkboxes on PR and issue
+# Update project: move PR + issue items → "Done"
 ```
 
 **Step 5 — Track (gh-projects):**
@@ -390,7 +415,7 @@ When skills have overlapping guidance:
 3. **issue-policy** governs issue structure — always
 4. **gh-projects** governs project board state — always
 5. For branch naming: issue-policy and pr-policy agree — follow the `feature/parent/child` convention
-6. For merge strategy: pr-policy decides (default squash)
+6. For merge strategy: pr-policy decides (default rebase; squash only for broken intermediaries)
 
 ## Automation Patterns
 
