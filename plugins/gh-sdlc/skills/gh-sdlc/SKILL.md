@@ -36,7 +36,7 @@ The user invokes `/gh-sdlc <objective>` or describes an objective alongside the 
 ### B) Retroactive: Ship completed work
 The user has already done the work (code is written, changes exist) and now invokes `/gh-sdlc` or says "commit" / "ship it" to formalize it.
 
-**Execution:** Delegate to the `sdlc-shipper` subagent. This subagent uses the latest Haiku model (see [model overview](https://platform.claude.com/docs/en/about-claude/models/overview) — always use the `haiku` alias, never hardcode a model ID) and has all five skills preloaded (commit-policy, issue-policy, pr-policy, gh-projects, gh-sdlc). It will dissect the changes, aggressively decompose, and run the full SDLC pipeline autonomously.
+**Execution:** Delegate to the `sdlc-shipper` subagent. This subagent uses the latest Sonnet model (see [model overview](https://platform.claude.com/docs/en/about-claude/models/overview) — always use the `sonnet` alias, never hardcode a model ID) and has all five skills preloaded (commit-policy, issue-policy, pr-policy, gh-projects, gh-sdlc). It will first plan (dissect changes, validate decomposition, check for relevance) and only then execute the full SDLC pipeline autonomously.
 
 **In both cases**, proper decomposition, issue creation, project tracking, branching, atomic commits, and PR creation MUST happen. The only difference is whether implementation occurs during the workflow (A) or has already occurred before it (B), and whether the current model or the `sdlc-shipper` subagent executes the pipeline.
 
