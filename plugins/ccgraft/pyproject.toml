@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ccgraft"
+dynamic = ["version"]
+description = "Export, import, and restore Claude Code sessions"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Achyuth Jayadevan", email = "achyuth@jayadevan.in" },
+]
+dependencies = [
+    "watchdog>=4.0",
+]
+
+[project.scripts]
+ccgraft-export = "ccgraft.cli.export:cli"
+ccgraft-import = "ccgraft.cli.import_:cli"
+ccgraft-restore = "ccgraft.cli.restore:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.hatch.version]
+path = "src/ccgraft/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ccgraft"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
