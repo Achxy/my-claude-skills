@@ -228,6 +228,36 @@ gh api -X DELETE repos/{owner}/{repo}/milestones/<number>
 gh issue edit <issue-number> --milestone "v1.0"
 ```
 
+## Sub-Issues and Dependencies (via GraphQL API)
+
+### Link Child as Sub-Issue
+```bash
+PARENT_ID=$(gh issue view <parent> --json id -q '.id')
+CHILD_ID=$(gh issue view <child> --json id -q '.id')
+
+gh api graphql -f query='
+  mutation { addSubIssue(input: { issueId: "'$PARENT_ID'", subIssueId: "'$CHILD_ID'" }) {
+    issue { id } subIssue { id }
+  }}'
+```
+
+### Remove Sub-Issue
+```bash
+gh api graphql -f query='
+  mutation { removeSubIssue(input: { issueId: "'$PARENT_ID'", subIssueId: "'$CHILD_ID'" }) {
+    issue { id } subIssue { id }
+  }}'
+```
+
+### Reorder Sub-Issue
+```bash
+# Place CHILD after AFTER_CHILD in the sub-issue list
+gh api graphql -f query='
+  mutation { reprioritizeSubIssue(input: {
+    issueId: "'$PARENT_ID'", subIssueId: "'$CHILD_ID'", afterId: "'$AFTER_CHILD_ID'"
+  }) { issue { id } }}'
+```
+
 ## Issue Management with Project Context
 
 ### Create Issue with Full Metadata

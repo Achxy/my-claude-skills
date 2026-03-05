@@ -211,6 +211,24 @@ Milestones are managed via `gh api`:
 | `due_on` | string | ISO 8601 date (`2024-06-01T00:00:00Z`) |
 | `state` | string | `open` or `closed` |
 
+## Sub-Issues GraphQL API Reference
+
+Sub-issues (parent-child relationships) and dependencies are managed via GraphQL:
+
+| Operation | Mutation |
+|-----------|----------|
+| Add sub-issue | `addSubIssue(input: { issueId, subIssueId })` |
+| Remove sub-issue | `removeSubIssue(input: { issueId, subIssueId })` |
+| Reorder sub-issue | `reprioritizeSubIssue(input: { issueId, subIssueId, afterId?, beforeId? })` |
+
+All require issue node IDs (obtained via `gh issue view <number> --json id -q '.id'`).
+
+### MCP Server Sub-Issue Tool
+
+The `sub_issue_write` tool (issues toolset) supports:
+- Methods: `add`, `remove`, `reprioritize`
+- Params: `owner`, `repo`, `issue_number`, `sub_issue_id` (required); `replace_parent`, `after_id`, `before_id` (optional)
+
 ## GitHub MCP Server Toolsets
 
 When using `github-mcp-server`, these toolsets provide project-related capabilities:
