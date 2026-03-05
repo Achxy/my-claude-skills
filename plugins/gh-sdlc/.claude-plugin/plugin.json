@@ -1,0 +1,19 @@
+{
+  "name": "gh-sdlc",
+  "description": "Slightly overkilled GitHub SDLC workflow: issue, project, branch, commit, PR, merge, track. Includes 5 policy skills and an autonomous shipping agent.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Achyuth Jayadevan",
+    "email": "achyuth@jayadevan.in"
+  },
+  "repository": "https://github.com/Achxy/dotclaude",
+  "license": "MIT",
+  "keywords": [
+    "github",
+    "sdlc",
+    "workflow",
+    "issues",
+    "pull-requests",
+    "project-management"
+  ]
+}
