@@ -241,7 +241,7 @@ This workflow orchestrates four policy skills:
 
 1. **Clean commit history:**
    ```bash
-   git rebase -i --autosquash origin/main
+   git rebase -i --autosquash origin/<target-branch>
    ```
 2. **Self-review checklist** (pr-policy)
 3. **Create PR** with full metadata:
@@ -252,7 +252,7 @@ This workflow orchestrates four policy skills:
    - Size: Aim for < 200 lines changed
 4. **Add PR to project board:**
    - Add PR via `gh project item-add` (PRs are trackable items, not just issues)
-   - Set item status to "In Review"
+   - Set item status to "In Progress"
    - Set priority and other custom fields matching the linked issue
 5. **Tick checkboxes** on the linked issue's acceptance criteria as each is satisfied. Tick PR checklist items as confirmed. Use `gh issue edit`/`gh pr edit --body` to update (see pr-policy checkbox management).
 
@@ -261,7 +261,7 @@ This workflow orchestrates four policy skills:
 1. **Address feedback:**
    - Small changes: `git commit --fixup=<hash>`
    - Substantial: new commit with proper message
-2. **Before merge:** Squash all fixups: `git rebase -i --autosquash origin/main`
+2. **Before re-requesting review:** Squash all fixups: `git rebase -i --autosquash origin/<target-branch>`
 3. **Merge strategy selection:**
    - Default: **Rebase and merge** — maintains linear history with every commit visible on main
    - Squash merge: **Only** when branch has broken intermediary commits (WIP, untested, messy)
@@ -384,6 +384,7 @@ gh pr create --title "gh-11: set up OAuth2 client" \
   --label "feature" \
   --project "Project Name" \
   --milestone "v1.0" \
+  --reviewer <username> \
   --assignee "@me"
 
 rm /tmp/pr-body.md

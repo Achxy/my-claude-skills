@@ -13,7 +13,6 @@ description: "Pull request standards and merge strategies (part of gh-sdlc). Pro
 
 - [ ] Reference exactly one repository issue (except emergency hotfixes)
 - [ ] Contain atomic, focused changes
-- [ ] Pass all CI checks before review request
 - [ ] Include tests for behavioral changes
 - [ ] Update documentation when interface changes
 - [ ] Maintain linear, clean commit history
@@ -67,7 +66,7 @@ gh pr create \
   --label "existing-label" \
   --project "Project Name" \
   --milestone "vX.Y" \
-  --reviewer "@me" \
+  --reviewer <username> \
   --assignee "@me"
 
 rm /tmp/pr-body.md
@@ -82,7 +81,7 @@ rm /tmp/pr-body.md
 
 **Reviewer/assignee rules:**
 - ALWAYS assign the user as assignee (`--assignee "@me"`) unless user explicitly opted out
-- Attempt to add user as reviewer (`--reviewer <username>`) — note: `@me` is not supported for `--reviewer`, use the actual username. GitHub may reject self-review requests on some plans; this is acceptable.
+- Add a reviewer (`--reviewer <username>`) when one is designated. Users can opt out of reviewer assignment. Do not self-assign as reviewer. Note: `@me` is not supported for `--reviewer` — use the actual username.
 
 ## PR Description Template
 
@@ -228,6 +227,8 @@ Use **only** when the branch has broken intermediary commits that cannot be clea
 ```
 gh-<issue>: <imperative description> (#pr)
 
+<Why this change was needed — one sentence>
+
 - Key change 1
 - Key change 2
 - Key change 3
@@ -254,7 +255,7 @@ gh pr merge <number> --squash --delete-branch
 | Type | Pattern | Example |
 |------|---------|---------|
 | Feature | `feature/issue-number-description` | `feature/23-role-permissions` |
-| Child feature | `feature/parent/child-description` | `feature/1/6-uv-setup` |
+| Child feature | `feature/parent-number/child-number-description` | `feature/1/6-uv-setup` |
 | Bugfix | `bugfix/issue-number-description` | `bugfix/56-null-pointer` |
 | Hotfix | `hotfix/description` | `hotfix/redis-connection-leak` |
 
@@ -366,17 +367,17 @@ git commit --fixup=target-commit-hash
 git commit -m "gh-23: refactor permission cache invalidation"
 ```
 
-**Before merge**, squash all fixups:
+**Before re-requesting review**, squash all fixups:
 ```bash
-git rebase -i --autosquash origin/main
+git rebase -i --autosquash origin/<target-branch>
 git push --force-with-lease
 ```
 
 ## Conflict Resolution
 
 ```bash
-git fetch origin main
-git rebase origin/main
+git fetch origin <target-branch>
+git rebase origin/<target-branch>
 # Resolve conflicts in files
 git add resolved-file.py
 git rebase --continue
@@ -391,7 +392,7 @@ git push --force-with-lease
 1. Create `hotfix/` branch from main
 2. Implement minimal fix
 3. Open PR with `hotfix:` prefix
-4. Expedited review → squash merge immediately
+4. Expedited review → rebase merge
 5. Backport to affected release branches
 
 ### Reverting
@@ -414,13 +415,4 @@ Use draft PRs for:
 - Demonstrating approach before full implementation
 - CI validation before review request
 
-Convert to ready when: all criteria met, CI passes, history cleaned, self-review complete.
-
-## CI/CD Requirements
-
-- Linting passes
-- Unit tests (100% of new code covered)
-- Integration tests pass
-- Security scans clean
-- Build verification succeeds
-- Documentation builds
+Convert to ready when: all criteria met, history cleaned, self-review complete.

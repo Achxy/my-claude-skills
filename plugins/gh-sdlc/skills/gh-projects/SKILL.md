@@ -94,7 +94,7 @@ gh project field-create <number> --owner "@me" --name "Due Date" --data-type DAT
 gh project field-create <number> --owner "@me" --name "Status" --data-type SINGLE_SELECT --single-select-options "Todo,In Progress,Done,Blocked"
 
 # Priority field
-gh project field-create <number> --owner "@me" --name "Priority" --data-type SINGLE_SELECT --single-select-options "P0-Critical,P1-High,P2-Medium,P3-Low"
+gh project field-create <number> --owner "@me" --name "Priority" --data-type SINGLE_SELECT --single-select-options "P0-critical,P1-high,P2-medium,P3-low"
 ```
 
 ### List Fields
@@ -279,8 +279,7 @@ gh project item-edit --id "$ITEM_ID" --field-id "$PRIORITY_FIELD_ID" --project-i
 
 | PR State | Project Status |
 |----------|---------------|
-| Opened / Draft | In Progress |
-| Ready for review | In Review |
+| Open (draft or ready) | In Progress |
 | Merged | Done |
 | Closed without merge | Remove or archive |
 
@@ -295,6 +294,7 @@ gh pr create \
   --project "Project Name" \
   --milestone "v1.0" \
   --label "feature" \
+  --reviewer <username> \
   --assignee "@me"
 ```
 
