@@ -402,10 +402,17 @@ gh issue edit 11 --body-file /tmp/updated-body.md
 
 **Step 4 — Merge (pr-policy + gh-projects):**
 ```bash
+# Before merge: append (#pr) to commit messages
+# For rebase merge, amend commits to include the PR number:
+git rebase -i HEAD~3  # reword each to append "(#20)"
+# e.g. "gh-11: add OAuth2 client configuration" → "gh-11: add OAuth2 client configuration (#20)"
+git push --force-with-lease
+
 # Rebase merge (default — clean atomic commits preserved on main)
 gh pr merge 20 --rebase --delete-branch
 
 # Squash merge ONLY if intermediary commits are broken
+# (squash merge auto-appends the PR number)
 # gh pr merge 20 --squash --delete-branch
 
 # Tick remaining checkboxes on PR and issue

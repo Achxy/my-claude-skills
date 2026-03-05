@@ -72,9 +72,11 @@ Same format as commit messages — PR titles and commits are unified.
 
 ### Commit messages
 ```
-gh-<issue>: <imperative summary>           # Issue-tracked (preferred)
+gh-<issue>: <imperative summary> (#pr)     # Issue-tracked on main (preferred)
+gh-<issue>: <imperative summary>           # Issue-tracked during development (PR not yet created)
 <type>(<scope>): <imperative summary>      # Untracked
 ```
+Every commit on main must include the `(#pr)` suffix referencing the PR it was merged through.
 
 ### Branch naming
 ```

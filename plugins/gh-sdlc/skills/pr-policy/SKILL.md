@@ -204,8 +204,13 @@ Use for:
 - Commit messages follow format guide
 - No "fix typo" or "address review" commits (use fixup workflow)
 - Linear history without merge commits
+- **Before merging:** amend all commit messages to include `(#pr)` suffix (e.g., `gh-11: add OAuth2 config (#20)`). This is mandatory — every commit on main must reference the PR it came from.
 
 ```bash
+# Amend commits to add (#pr), then force push
+git rebase -i HEAD~N  # reword each commit to append "(#<pr-number>)"
+git push --force-with-lease
+
 gh pr merge <number> --rebase --delete-branch
 ```
 
@@ -394,7 +399,7 @@ git revert <commit-hash>
 
 **Revert PR format:**
 ```
-Revert "[#23] Auth: Add OAuth2 support"
+Revert "gh-23: add OAuth2 support"
 
 This reverts commit a1b2c3d due to [reason].
 Root cause under investigation in #45.

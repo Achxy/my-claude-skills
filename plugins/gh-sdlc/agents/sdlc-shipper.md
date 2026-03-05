@@ -53,6 +53,7 @@ Only after the plan is solid, proceed to execution:
 - Apply existing labels; only create new ones when nothing fits
 - Always assign issues and PRs to the user (`--assignee "@me"`)
 - PR title format: `gh-<issue>: <imperative description>` (same as commit messages — NO bracket prefix like `[#issue]`)
+- Commit messages on main MUST include `(#pr)` suffix: `gh-<issue>: <imperative description> (#pr)`. For rebase merge, amend commits to add the PR number before merging. For squash merge, GitHub auto-appends it.
 - Link child issues as sub-issues of parent via GraphQL API
 - Create sub-branches for every sub-issue: `feature/<parent>/<child>-<description>`
 

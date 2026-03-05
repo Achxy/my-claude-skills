@@ -20,13 +20,14 @@ gh-<issue>: <imperative summary> (#pr)
 ```
 
 **Examples:**
-- `gh-18421: reject invalid UTF-8 in marshal string loader`
+- `gh-23: add database migration for user roles (#30)`
 - `gh-142579: avoid divmod crash on malformed _pylong.int (#435)`
-- `gh-23: add database migration for user roles`
+- `gh-18421: reject invalid UTF-8 in marshal string loader (#19012)`
 
 **Rules:**
 - Issue identifier comes FIRST
-- PR number appended in parentheses when applicable
+- PR number `(#pr)` MUST be appended to all commits that land on main — this is the final commit message after merge, not optional
+- During development on a feature branch, commits may omit `(#pr)` since the PR does not exist yet. The PR number is added at merge time (squash merge auto-appends it; for rebase merge, amend the commit message before merging)
 - Description body is RARELY needed — the issue tracker holds the context
 
 ### Case 2: Direct Commits (No Issue)
