@@ -68,7 +68,6 @@ gh pr create \
 ## Changes
 Brief technical summary of implementation approach.
 
-## Issue Reference
 Closes #issue-number
 
 ## Testing
@@ -86,6 +85,8 @@ Closes #issue-number
 ## Reviewer Notes
 Context for architectural decisions and tradeoffs.
 ```
+
+**The `Closes #N` line goes directly in the Changes section** — not in a separate heading. This creates the Development sidebar link automatically when the PR targets the default branch, giving a clean linked-issue appearance rather than a verbose "Issue Reference" section.
 
 ## PR Project Tracking
 
@@ -111,9 +112,21 @@ Every PR must have:
 - **Project**: Added to the active project board
 - **Milestone**: Same milestone as its linked issue
 - **Labels**: Matching issue labels
-- **Development link**: Issue linked via `Closes #N` in body (auto-links in GitHub's Development sidebar)
+- **Development link**: Issue linked in the Development sidebar (see below)
 - **Assignee**: The user (`--assignee "@me"`)
 - **Reviewer**: The user or designated reviewer
+
+### Development Sidebar Linking
+
+The Development sidebar shows linked issues with a status icon — this is the proper way to associate PRs with issues (not a body section).
+
+**When PR targets the default branch (main):**
+Include `Closes #N` in the PR body (inside the Changes section). GitHub automatically creates the Development sidebar link and will auto-close the issue on merge.
+
+**When PR targets a non-default branch (child → parent):**
+Closing keywords are **ignored** by GitHub when the PR doesn't target the default branch — no link is created and merging has no effect on issues. Instead, reference the issue with `Part of #N` or `For #N` in the body (no closing keyword). The Development sidebar link must be created manually via the GitHub UI, or accepted as absent for intermediate PRs.
+
+**Supported closing keywords:** `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved` (case-insensitive, optional colon).
 
 ## Checkbox Management
 

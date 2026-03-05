@@ -246,7 +246,7 @@ This workflow orchestrates four policy skills:
 2. **Self-review checklist** (pr-policy)
 3. **Create PR** with full metadata:
    - Title: `[#issue] Component: Imperative description`
-   - Body: Changes, issue reference (`Closes #N`), testing, checklist
+   - Body: Changes section with `Closes #N` inline (creates Development sidebar link when targeting main; use `Part of #N` for non-main targets), testing, checklist
    - Apply labels (existing ones), set project (`--project`), set milestone (`--milestone`)
    - Assign user as reviewer (`--reviewer <username>`) and assignee (`--assignee "@me"`)
    - Size: Aim for < 200 lines changed
@@ -357,7 +357,6 @@ gh pr create --title "[#11] Auth: Set up OAuth2 client" \
 - OAuth2 client with PKCE support
 - Configuration via environment variables
 
-## Issue Reference
 Closes #11
 
 ## Testing
