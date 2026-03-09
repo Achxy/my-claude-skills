@@ -71,6 +71,17 @@ gh-<issue>: <imperative summary> (#pr)
 - Generic English words that happen to also be technical terms (e.g., "session", "project", "branch" when used in plain prose)
 - Issue/PR numbers (`#42`, not `` `#42` ``)
 
+**Shell escaping in `--title`:** When passing backtick-wrapped titles to `gh issue create --title` or `gh pr create --title`, use single quotes and raw backticks — never backslash-escape them. Single quotes preserve all characters literally, so backslashes pass through as literal `\` characters in the title.
+
+```bash
+# CORRECT — raw backticks inside single quotes
+gh issue create --title 'Plugin: add `hypersaint` architecture skill'
+
+# WRONG — backslash-escaped backticks produce literal backslashes in the title
+gh issue create --title 'Plugin: add \`hypersaint\` architecture skill'
+#                        renders as: Plugin: add \hypersaint\ architecture skill
+```
+
 **Examples:**
 - `gh-37: use `--body-file` for all issue and PR body content (#38)` — flag wrapped
 - `gh-42: add `README.md` for `gh-sdlc` plugin (#44)` — filename and plugin name wrapped
