@@ -45,6 +45,8 @@ hotfix: critical issue description
 
 When creating a PR, apply all metadata in one command. **Always use `--body-file`** to pass the PR body — never inline markdown in `--body "..."` because backticks, code blocks, and special characters get mangled by shell interpretation.
 
+When the title contains backtick-wrapped names, use single quotes with raw backticks — never backslash-escape them inside single quotes (see commit-policy for details).
+
 ```bash
 # Write body to temp file (markdown is preserved exactly)
 cat > /tmp/pr-body.md <<'EOF'
