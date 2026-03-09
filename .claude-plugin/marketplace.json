@@ -37,6 +37,22 @@
         "graft"
       ],
       "category": "utilities"
+    },
+    {
+      "name": "hypersaint",
+      "source": "./plugins/hypersaint",
+      "description": "LLM-native repository architecture enforcing hypermodular directory structure and maximum strictness. Every directory is a self-describing atom with progressive disclosure, integrity hashes, and machine-readable manifests.",
+      "version": "1.0.0",
+      "keywords": [
+        "architecture",
+        "modularity",
+        "strictness",
+        "llm-native",
+        "repository-structure",
+        "progressive-disclosure",
+        "integrity"
+      ],
+      "category": "architecture"
     }
   ]
 }
