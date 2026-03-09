@@ -1,0 +1,20 @@
+{
+  "name": "hypersaint",
+  "description": "LLM-native repository architecture enforcing hypermodular directory structure and maximum strictness. Every directory is a self-describing atom with progressive disclosure, integrity hashes, and machine-readable manifests.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Achyuth Jayadevan",
+    "email": "achyuth@jayadevan.in"
+  },
+  "repository": "https://github.com/Achxy/dotclaude",
+  "license": "MIT",
+  "keywords": [
+    "architecture",
+    "modularity",
+    "strictness",
+    "llm-native",
+    "repository-structure",
+    "progressive-disclosure",
+    "integrity"
+  ]
+}

@@ -1,0 +1,74 @@
+# Hypersaint Integrity Verification CI
+#
+# This workflow verifies that all README.md and index.toml manifests
+# are in sync with the actual files in the repository. It runs the
+# full integrity check on every push and pull request.
+#
+# Failure means: someone (human or LLM) modified a file without
+# updating the containing directory's manifests. The change cannot
+# merge until manifests are corrected.
+#
+# Usage:
+#   Copy this file to .github/workflows/hypersaint-integrity.yml
+#   Ensure scripts/verify_integrity.py exists (see Hypersaint skill)
+
+name: Hypersaint Integrity
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    name: Verify Manifest Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # No pip dependencies needed — the integrity checker uses only stdlib
+      # (hashlib, tomllib, pathlib, re, os)
+
+      - name: Run integrity verification
+        run: |
+          python scripts/verify_integrity.py . --strict
+        env:
+          # Machine-readable output for the LLM agent's feedback loop
+          HYPERSAINT_OUTPUT: "machine"
+
+      - name: Summary on failure
+        if: failure()
+        run: |
+          echo "## Hypersaint Integrity Check Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "One or more README.md or index.toml manifests are out of sync." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### How to fix" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run the following commands locally:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Update all affected READMEs and index.toml files" >> $GITHUB_STEP_SUMMARY
+          echo "python scripts/readme_hooks.py . --all" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Verify everything is clean" >> $GITHUB_STEP_SUMMARY
+          echo "python scripts/verify_integrity.py ." >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Or, to update only the directories affected by your changes:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "python scripts/readme_hooks.py . --changed <your-changed-files>" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
