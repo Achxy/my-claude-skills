@@ -23,6 +23,10 @@ Checks Performed:
     9. Cross-validation: README.md's hash of index.toml matches actual index.toml.
     10. Circular dependency symmetry: if A declares circular with B, B must
         declare circular with A.
+    11. Reference target existence: every path in [references] points to an
+        existing file in the repository.
+    12. Reference relationship validity: every rel in [references] is a known
+        relationship type.
 
 Output Format (default):
     One error per line:
@@ -46,13 +50,29 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
 try:
     import tomllib
 except ImportError:
     import tomli as tomllib  # type: ignore[no-redef]
 
-IGNORE_DIRS: frozenset[str] = frozenset({
+__all__: list[str] = [
+    "IntegrityError",
+    "sha256_file",
+    "sha256_directory",
+    "should_ignore",
+    "parse_readme_integrity",
+    "parse_index_toml",
+    "get_actual_entries",
+    "check_directory",
+    "check_circular_symmetry",
+    "check_references",
+    "find_managed_directories",
+    "main",
+]
+
+IGNORE_DIRS: Final[frozenset[str]] = frozenset({
     ".git",
     "__pycache__",
     "node_modules",
@@ -69,12 +89,12 @@ IGNORE_DIRS: frozenset[str] = frozenset({
     ".github",
 })
 
-IGNORE_FILES: frozenset[str] = frozenset({
+IGNORE_FILES: Final[frozenset[str]] = frozenset({
     ".DS_Store",
     "Thumbs.db",
 })
 
-IGNORE_EXTENSIONS: frozenset[str] = frozenset({
+IGNORE_EXTENSIONS: Final[frozenset[str]] = frozenset({
     ".pyc",
     ".pyo",
     ".pyd",
@@ -82,8 +102,20 @@ IGNORE_EXTENSIONS: frozenset[str] = frozenset({
     ".dylib",
 })
 
-INTEGRITY_START = "<!-- @hs:integrity -->"
-INTEGRITY_END = "<!-- @/hs:integrity -->"
+INTEGRITY_START: Final[str] = "<!-- @hs:integrity -->"
+INTEGRITY_END: Final[str] = "<!-- @/hs:integrity -->"
+
+KNOWN_REFERENCE_RELS: Final[frozenset[str]] = frozenset({
+    "documents",
+    "documented-by",
+    "generates",
+    "generated-from",
+    "configures",
+    "configured-by",
+    "tests",
+    "tested-by",
+    "related",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,7 +177,14 @@ def should_ignore(name: str, is_dir: bool) -> bool:
 
 
 def parse_readme_integrity(readme_path: Path) -> dict[str, str] | None:
-    """Parse the integrity block from a README.md. Returns None if no block found."""
+    """Parse the integrity block from a README.md.
+
+    Args:
+        readme_path: Path to the README.md file.
+
+    Returns:
+        Dictionary mapping filenames to SHA-256 hashes, or None if no block found.
+    """
     if not readme_path.exists():
         return None
 
@@ -174,7 +213,14 @@ def parse_readme_integrity(readme_path: Path) -> dict[str, str] | None:
 
 
 def parse_index_toml(index_path: Path) -> dict[str, object] | None:
-    """Parse index.toml. Returns None if file doesn't exist."""
+    """Parse index.toml.
+
+    Args:
+        index_path: Path to the index.toml file.
+
+    Returns:
+        Parsed TOML data as a dictionary, or None if the file doesn't exist.
+    """
     if not index_path.exists():
         return None
 
@@ -183,7 +229,15 @@ def parse_index_toml(index_path: Path) -> dict[str, object] | None:
 
 
 def get_actual_entries(directory: Path, *, exclude: str) -> dict[str, str]:
-    """Get actual file hashes for a directory, excluding the named file."""
+    """Get actual file hashes for a directory, excluding the named file.
+
+    Args:
+        directory: Path to the directory to scan.
+        exclude: Filename to exclude from the scan.
+
+    Returns:
+        Dictionary mapping filenames to SHA-256 hashes.
+    """
     entries: dict[str, str] = {}
 
     for item in sorted(directory.iterdir()):
@@ -204,7 +258,15 @@ def get_actual_entries(directory: Path, *, exclude: str) -> dict[str, str]:
 
 
 def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
-    """Run all integrity checks on a single directory."""
+    """Run all integrity checks on a single directory.
+
+    Args:
+        directory: Path to the directory to check.
+        repo_root: Path to the repository root.
+
+    Returns:
+        List of integrity errors found.
+    """
     errors: list[IntegrityError] = []
     rel = str(directory.relative_to(repo_root))
 
@@ -256,7 +318,7 @@ def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
                 errors.append(IntegrityError(
                     code="HASH_MISMATCH",
                     path=f"{rel}/{name}",
-                    message=f"Hash mismatch in index.toml",
+                    message="Hash mismatch in index.toml",
                     declared=declared,
                     actual=actual,
                 ))
@@ -267,7 +329,7 @@ def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
             errors.append(IntegrityError(
                 code="MISSING_ENTRY",
                 path=f"{rel}/{name}",
-                message=f"File exists but not in index.toml [integrity]",
+                message="File exists but not in index.toml [integrity]",
             ))
 
     # Check 4: index.toml extra entries
@@ -276,7 +338,7 @@ def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
             errors.append(IntegrityError(
                 code="EXTRA_ENTRY",
                 path=f"{rel}/{name}",
-                message=f"Entry in index.toml [integrity] but file does not exist",
+                message="Entry in index.toml [integrity] but file does not exist",
             ))
 
     # Checks 5-7: README.md integrity block
@@ -290,7 +352,7 @@ def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
                     errors.append(IntegrityError(
                         code="HASH_MISMATCH",
                         path=f"{rel}/{name}",
-                        message=f"Hash mismatch in README.md integrity block",
+                        message="Hash mismatch in README.md integrity block",
                         declared=declared,
                         actual=actual,
                     ))
@@ -300,7 +362,7 @@ def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
                 errors.append(IntegrityError(
                     code="MISSING_ENTRY",
                     path=f"{rel}/{name}",
-                    message=f"File exists but not in README.md integrity block",
+                    message="File exists but not in README.md integrity block",
                 ))
 
         for name in readme_integrity:
@@ -308,7 +370,7 @@ def check_directory(directory: Path, repo_root: Path) -> list[IntegrityError]:
                 errors.append(IntegrityError(
                     code="EXTRA_ENTRY",
                     path=f"{rel}/{name}",
-                    message=f"Entry in README.md integrity block but file does not exist",
+                    message="Entry in README.md integrity block but file does not exist",
                 ))
 
     elif readme_path.exists():
@@ -350,7 +412,15 @@ def check_circular_symmetry(
     repo_root: Path,
     all_dirs: list[Path],
 ) -> list[IntegrityError]:
-    """Check that circular dependency declarations are symmetric."""
+    """Check that circular dependency declarations are symmetric.
+
+    Args:
+        repo_root: Path to the repository root.
+        all_dirs: List of all managed directories.
+
+    Returns:
+        List of integrity errors for asymmetric circular declarations.
+    """
     errors: list[IntegrityError] = []
 
     # Collect all circular declarations
@@ -395,8 +465,78 @@ def check_circular_symmetry(
     return errors
 
 
+def check_references(
+    repo_root: Path,
+    all_dirs: list[Path],
+) -> list[IntegrityError]:
+    """Check that all [references] entries have valid targets and relationship types.
+
+    Args:
+        repo_root: Path to the repository root.
+        all_dirs: List of all managed directories.
+
+    Returns:
+        List of integrity errors for invalid reference targets or relationship types.
+    """
+    errors: list[IntegrityError] = []
+
+    for directory in all_dirs:
+        index_path = directory / "index.toml"
+        if not index_path.exists():
+            continue
+
+        data = parse_index_toml(index_path)
+        if data is None:
+            continue
+
+        references = data.get("references", {})
+        if not isinstance(references, dict) or not references:
+            continue
+
+        rel = str(directory.relative_to(repo_root))
+
+        for ref_name, ref_data in references.items():
+            if not isinstance(ref_data, dict):
+                continue
+
+            # Check 11: reference target existence
+            ref_path = ref_data.get("path", "")
+            if ref_path:
+                target = repo_root / ref_path
+                if not target.exists():
+                    errors.append(IntegrityError(
+                        code="REFERENCE_TARGET_MISSING",
+                        path=f"{rel}/index.toml",
+                        message=(
+                            f"Reference '{ref_name}' points to "
+                            f"'{ref_path}' which does not exist"
+                        ),
+                    ))
+
+            # Check 12: reference relationship validity
+            ref_rel = ref_data.get("rel", "")
+            if ref_rel and ref_rel not in KNOWN_REFERENCE_RELS:
+                errors.append(IntegrityError(
+                    code="INVALID_REFERENCE_TYPE",
+                    path=f"{rel}/index.toml",
+                    message=(
+                        f"Reference '{ref_name}' uses unknown relationship "
+                        f"type '{ref_rel}'"
+                    ),
+                ))
+
+    return errors
+
+
 def find_managed_directories(repo_root: Path) -> list[Path]:
-    """Find all directories that should be managed by Hypersaint."""
+    """Find all directories that should be managed by Hypersaint.
+
+    Args:
+        repo_root: Path to the repository root.
+
+    Returns:
+        List of paths to managed directories.
+    """
     result: list[Path] = []
 
     for dirpath, dirnames, _filenames in os.walk(repo_root):
@@ -414,7 +554,7 @@ def find_managed_directories(repo_root: Path) -> list[Path]:
 
 
 def main() -> None:
-    """Entry point."""
+    """Entry point for the integrity verification script."""
     if len(sys.argv) < 2:
         print(
             "Usage: python verify_integrity.py <repo_root> [--strict] [--json]",
@@ -439,6 +579,9 @@ def main() -> None:
 
     # Check circular symmetry across the whole repo
     all_errors.extend(check_circular_symmetry(repo_root, all_dirs))
+
+    # Check references across the whole repo
+    all_errors.extend(check_references(repo_root, all_dirs))
 
     # Output
     if use_json:

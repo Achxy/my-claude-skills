@@ -8,9 +8,10 @@
 4. [Hash Computation](#hash-computation)
 5. [Dependency Declarations](#dependency-declarations)
 6. [Circular Dependencies](#circular-dependencies)
-7. [Description Field](#description-field)
-8. [Examples](#examples)
-9. [Validation Rules](#validation-rules)
+7. [Soft References](#soft-references)
+8. [Description Field](#description-field)
+9. [Examples](#examples)
+10. [Validation Rules](#validation-rules)
 
 ---
 
@@ -47,6 +48,12 @@ symbols = ["LoginHandler", "LoginConfig", "LoginError"]
 [circular]
 # Only present if circular dependencies exist. See Circular Dependencies section.
 # "src.features.auth.session" = "Session needs LoginError type for error propagation"
+
+[references]
+# Only present if soft references exist. See Soft References section.
+# [[references."local_file"]]
+# path = "repo/relative/path"
+# rel = "relationship_type"
 
 [integrity]
 # SHA-256 hashes of every sibling file/directory, excluding index.toml itself.
@@ -105,6 +112,17 @@ If the atom has no external dependencies, this table is present but empty: `[dep
 ### `[circular]`
 
 Present ONLY if circular dependencies exist. See Circular Dependencies section below.
+
+### `[references]`
+
+Present ONLY if semantic cross-references exist between files in this atom and files elsewhere
+in the repository.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| Keys | String (local filename) | - | Relative path to the local file being cross-referenced |
+| `path` | String | Yes | Path to the referenced file, relative to repo root |
+| `rel` | String | Yes | Relationship type from the known set |
 
 ### `[integrity]`
 
@@ -226,6 +244,61 @@ Circular dependencies are not banned but must be declared, justified, and ideall
 
 ---
 
+## Soft References
+
+The `[references]` table declares semantic relationships between files that are not import
+dependencies. These are many-to-many cross-links: a documentation file documents an implementation
+file, a generated artifact derives from a source template, a config file governs a service file.
+
+### Schema
+
+```toml
+[references]
+# Keys are local files (relative to this directory).
+# Values are arrays of tables with `path` (relative to repo root) and `rel` (relationship type).
+
+[[references."docs/api_reference.html"]]
+path = "src/features/download/downloader.py"
+rel = "documents"
+
+[[references."docs/api_reference.html"]]
+path = "src/features/upload/uploader.py"
+rel = "documents"
+
+[[references."config/download_limits.toml"]]
+path = "src/features/download/downloader.py"
+rel = "configures"
+```
+
+### Relationship Types
+
+| Type | Meaning | Inverse |
+|------|---------|---------|
+| `documents` | This file documents the target | `documented-by` |
+| `documented-by` | This file is documented by the target | `documents` |
+| `generates` | This file is the source that generates the target | `generated-from` |
+| `generated-from` | This file was generated from the target | `generates` |
+| `configures` | This file configures the behavior of the target | `configured-by` |
+| `configured-by` | This file's behavior is configured by the target | `configures` |
+| `tests` | This file tests the target (beyond co-located test files) | `tested-by` |
+| `tested-by` | This file is tested by the target | `tests` |
+| `related` | General semantic relationship (use sparingly; prefer specific types) | `related` |
+
+### Rules
+
+1. **Paths in `path` must point to existing files.** Non-existent reference targets are hard
+   failures in CI.
+2. **Relationship types must be from the known set.** Unknown relationship types are errors.
+3. **Many-to-many is expected.** A single file can reference multiple targets, and a single
+   target can be referenced by multiple files across different atoms.
+4. **Inverse declarations are encouraged but not required.** If atom A says file X `documents`
+   file Y, atom B (containing Y) may optionally declare Y as `documented-by` X. The MCP server
+   can infer inverse relationships from one-sided declarations.
+5. **`related` is the escape hatch.** Use it only when no specific type fits. Overuse of
+   `related` signals that a new relationship type should be proposed.
+
+---
+
 ## Description Field
 
 The optional top-level `description` field is governed by strict rules to prevent it from becoming
@@ -339,7 +412,7 @@ symbols = ["generate_figure", "FigureConfig"]
 CI and the MCP server validate index.toml against these rules:
 
 1. **Schema compliance.** All tables must be from the known set: `exports`, `dependencies`,
-   `circular`, `integrity`, `children`. Unknown tables are errors.
+   `circular`, `references`, `integrity`, `children`. Unknown tables are errors.
 2. **Hash accuracy.** Every hash in `[integrity]` must match the recomputed hash of the
    corresponding file or directory. Mismatches are hard failures.
 3. **Completeness.** Every file and directory sibling to index.toml must have an entry in
@@ -354,3 +427,7 @@ CI and the MCP server validate index.toml against these rules:
    not always a hard failure depending on language.)
 7. **Description length.** If `description` is present, it must be ≤ 2 sentences. Enforced by
    counting sentence-ending punctuation (`.`, `!`, `?`).
+8. **Reference target existence.** Every `path` in `[references]` must point to a file that
+   exists in the repository. Non-existent targets are hard failures.
+9. **Reference relationship validity.** Every `rel` in `[references]` must be from the known
+   set of relationship types. Unknown types are hard failures.

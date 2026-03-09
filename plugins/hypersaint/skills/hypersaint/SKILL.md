@@ -49,29 +49,48 @@ These rules are non-negotiable. Every Hypersaint repository must satisfy all of 
 
 ### Strictness Rules
 
-1. **Every configurable strictness dial is at maximum.** Pyright strict mode. TypeScript `strict: true`
-   plus all pedantic flags. Ruff with all applicable rules enabled. No exceptions without explicit,
-   commented justification citing the specific error code.
-2. **Prefer tools that unify and enforce.** Ruff over flake8+isort+black. Biome over ESLint+Prettier.
-   Bun over Node. The tool that makes the wrong thing a hard error wins.
-3. **Static typing is exhaustive.** Every function has full parameter and return annotations. No `Any`.
-   No untyped public API surface. Runtime validation (Pydantic, Zod, beartype) at every trust boundary.
-4. **Every class declares its shape explicitly.** `__slots__` in Python. Explicit interfaces in TypeScript.
-   No implicit attribute creation.
-5. **Every module declares its public surface.** `__all__` in every Python file and `__init__.py`.
-   Explicit exports in TypeScript. No namespace pollution.
+0. **Every strictness dimension applies.** The dimensions described in the Philosophy reference
+   (structural, behavioral, data lifecycle, temporal, communication, error domain, resource,
+   observability, operational, security) govern every decision. The rules below are common
+   instances of those dimensions, not the exhaustive list. The agent must identify and apply
+   the relevant strictness dimensions for every decision it makes.
+1. **Every configurable strictness dial is at maximum.** The language's type checker, linter, and
+   formatter must all run at their strictest settings. No exceptions without explicit, commented
+   justification citing the specific error code. (E.g., Pyright strict mode, TypeScript `strict: true`
+   plus all pedantic flags, Clippy with all lints in Rust.)
+2. **Prefer tools that unify and enforce.** When multiple tools cover overlapping concerns, choose the
+   single tool that consolidates them and makes the wrong thing a hard error. Fewer tools with broader
+   scope beat many tools with narrow scope. (E.g., Ruff over flake8+isort+black, Biome over
+   ESLint+Prettier.)
+3. **Static typing is exhaustive.** Every function has full parameter and return annotations. No escape
+   hatches from the type system. No untyped public API surface. Runtime validation at every trust
+   boundary using the language's canonical schema validation library.
+4. **Every data structure declares its shape explicitly.** No attribute, field, or member may exist at
+   runtime that is not declared in the structure's definition. Dynamic attribute creation and implicit
+   field inheritance are prohibited.
+5. **Every module declares its public surface.** Every file and package must explicitly enumerate what
+   it exports. No namespace pollution — consumers see only what the author intended. (E.g., `__all__`
+   in Python, explicit `export` in TypeScript, `pub` visibility in Rust.)
 6. **Every public symbol has a docstring.** Functions, classes, methods, modules. The docstring is the
    contract the next agent reads instead of the implementation.
-7. **Tests are mandatory and layered.** Unit tests for known cases. Property-based tests (Hypothesis,
-   fast-check) for invariants. Both required for every public function.
+7. **Tests are mandatory and layered.** Unit tests for known cases. Property-based tests for invariants.
+   Both required for every public function. Use the language's canonical property-based testing library.
+   (E.g., Hypothesis for Python, fast-check for TypeScript, proptest for Rust.)
 8. **Dependencies must be proven.** High adoption, active maintenance, trusted maintainers. Never
    author security-sensitive code — wrap proven libraries so tightly that misuse is a type error.
-9. **Infrastructure is code.** Dev environment (Nix flakes), cloud resources (Terraform/Pulumi),
-   CI/CD, configuration (typed + validated at startup), containers (multi-stage, distroless).
+9. **Infrastructure is code.** Dev environment, cloud resources, CI/CD, configuration, and containers
+   are all declared in version-controlled, reproducible configuration files. Configuration must be
+   typed and validated at startup. (E.g., Nix flakes, Terraform/Pulumi, multi-stage distroless
+   container builds.)
 10. **The feedback loop is sacred.** Every change runs the full strictness suite. The agent loops
-    until it passes. Fast tools (Ruff, Biome, Pyright) are mandatory — speed enables tight loops.
+    until it passes. Fast tooling is mandatory — speed enables tight loops.
 
 ### Modularity Rules
+
+The modularity rules below are the structural strictness dimension applied to code organization. The
+reason every directory has manifests, the reason boundaries are enforced by the integrity system, the
+reason DRY is supreme — is because these rules make incorrect organizational states structurally
+inexpressible.
 
 1. **Directories are atoms.** The atomic unit of work is a directory containing tightly related files
    for one concept. The agent loads one atom, understands it fully, modifies it, and puts it back.
