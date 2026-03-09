@@ -214,6 +214,13 @@ and forgets. If the event schema changes, both atoms must be updated.
 <!-- @/hs:section -->
 ```
 
+The Related Atoms section in README.md provides the **semantic narrative** — why the relationship
+matters and what to watch for when modifying either atom. The `[references]` table in `index.toml`
+carries the **machine-readable link** — which files reference which, with typed relationships. The
+README should not duplicate the raw reference data from `index.toml`; instead, it adds the context
+that helps the agent understand the *implications* of the relationship. The MCP server combines
+both sources to give the agent a complete picture.
+
 ### Examples / Usage
 
 Canonical usage snippets showing how the public API is meant to be called. Loadable per-API so

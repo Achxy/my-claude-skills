@@ -27,11 +27,15 @@ Hypersaint modularity resolves the tension between **navigability** (the LLM nee
 right piece fast) and **isolation** (once it finds the piece, it should need nothing else to work
 on it).
 
-The key insight: in a hypermodular repo with full type annotations, docstrings, and `__all__`
-declarations, the agent working on module B does not need to read the *implementation* of a
+The key insight: in a hypermodular repo with full type annotations, docstrings, and explicit public
+surface declarations, the agent working on module B does not need to read the *implementation* of a
 dependency — it reads the type signature and the docstring, which are the contract. DRY therefore
 *saves* context window rather than costing it, because a shared utility's contract is loaded once
 and is far smaller than duplicated implementations.
+
+The modularity system is the structural strictness dimension (see Philosophy) applied to code
+organization. Every manifest, every boundary, every integrity check exists to make incorrect
+organizational states structurally inexpressible rather than conventionally discouraged.
 
 ---
 
@@ -62,14 +66,15 @@ Rules for atom contents:
    represents a single cohesive concept, it should be split into a sub-atom (a subdirectory with
    its own README.md and index.toml).
 4. **Test files** — Co-located. Always. The agent loading this atom has everything it needs to
-   understand and verify the code. Test file names mirror implementation file names with a `test_`
-   prefix (Python) or `.test.` infix (TypeScript) or `_test` suffix (Rust/Go).
+   understand and verify the code. Test file names mirror implementation file names using the
+   language's standard test naming convention (e.g., `test_` prefix in Python, `.test.` infix in
+   TypeScript, `_test` suffix in Rust/Go).
 5. **Test fixtures** — Co-located inside the atom if they are specific to this atom. Shared test
    infrastructure (factories, builders, mock servers) lives at a semantically named shared path
    under the lowest common ancestor.
-6. **No configuration files at the atom level.** Tooling configuration (pyproject.toml, biome.json,
-   Cargo.toml) lives at the repository root or at the top-level project boundary. Atoms inherit
-   configuration. They do not override it.
+6. **No configuration files at the atom level.** Language-level configuration files (build system
+   config, linter config, etc.) live at the repository root or at the top-level project boundary.
+   Atoms inherit configuration. They do not override it.
 
 ### What Does NOT Live Inside an Atom
 
@@ -296,10 +301,10 @@ does not impose a layer cake. However:
    and should be restructured. This is a **soft rule** — if restructuring would create worse
    problems (duplication, artificial indirection), the cycle can remain with justification.
 
-3. **Import linting is mandatory.** Use tooling to enforce dependency rules:
-   - Python: `import-linter` or `ruff` import rules
-   - TypeScript: `eslint-plugin-import` or Biome import rules
-   - Rust: `cargo-deny` for crate-level, module visibility for internal
+3. **Import linting is mandatory.** Use automated tooling to enforce dependency rules. Every
+   language ecosystem has tools that can verify import boundaries and flag violations as hard errors.
+   (E.g., `import-linter` or `ruff` import rules in Python, Biome import rules in TypeScript,
+   `cargo-deny` and module visibility in Rust.)
 
 ---
 
@@ -382,11 +387,13 @@ principles:
 
 ### Imports
 
-- **Absolute imports from the project root.** `from src.features.auth.login.login import LoginHandler`.
-  Never relative imports that navigate upward (`from ...format import ...`). Absolute imports are
-  greppable and unambiguous.
-- **Import the symbol, not the module** (where language conventions permit). `from module import Class`
-  over `import module` in Python. Named imports in TypeScript/JavaScript.
+- **Absolute imports from the project root.** All imports use fully qualified paths rooted at the
+  project boundary. Relative imports that navigate upward are prohibited. Absolute imports are
+  greppable and unambiguous. (E.g., `from src.features.auth.login.login import LoginHandler` in
+  Python, not `from ...format import ...`.)
+- **Import the symbol, not the module** (where language conventions permit). Import the specific
+  name you need, not the containing namespace. This makes dependencies explicit and greppable.
+  (E.g., `from module import Class` over `import module` in Python, named imports in TypeScript.)
 
 ---
 

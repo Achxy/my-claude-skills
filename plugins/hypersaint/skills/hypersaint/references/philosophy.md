@@ -3,13 +3,14 @@
 ## Table of Contents
 
 1. [The Foundational Axiom](#the-foundational-axiom)
-2. [Tool Selection Doctrine](#tool-selection-doctrine)
-3. [Code-Level Strictness](#code-level-strictness)
-4. [Dependency Philosophy](#dependency-philosophy)
-5. [Security Posture](#security-posture)
-6. [Infrastructure as Code](#infrastructure-as-code)
-7. [The Feedback Loop](#the-feedback-loop)
-8. [What Hypersaint Is Not](#what-hypersaint-is-not)
+2. [The Strictness Axiom](#the-strictness-axiom)
+3. [Tool Selection Doctrine](#tool-selection-doctrine)
+4. [Code-Level Strictness](#code-level-strictness)
+5. [Dependency Philosophy](#dependency-philosophy)
+6. [Security Posture](#security-posture)
+7. [Infrastructure as Code](#infrastructure-as-code)
+8. [The Feedback Loop](#the-feedback-loop)
+9. [What Hypersaint Is Not](#what-hypersaint-is-not)
 
 ---
 
@@ -29,6 +30,92 @@ mistake before it propagates.
 The codebase is the specification. The specification is the codebase. There is no gap between
 intent and implementation because every intent is encoded as a type, a contract, a test, a
 validation, or an assertion. Ambiguity is a defect.
+
+### Context Acquisition
+
+When the agent encounters a library, API, or system it doesn't fully understand, it must seek authoritative context via MCP servers, documentation fetch, or reference files before writing code. The agent does not guess. It does not rely on training data that may be stale. It acquires ground-truth context at the moment of need and acts on verified information. This is the enforcement-over-convention principle applied to the agent's own cognition.
+
+---
+
+## The Strictness Axiom
+
+Strictness is not a property of code. It is the system's relationship to ambiguity. Every decision surface in the system — architectural, behavioral, temporal, communicational, observational, operational, security — is governed by explicit, formal constraints that make incorrect states structurally inexpressible. The wrong thing is not discouraged. The wrong thing is not caught by a test. The wrong thing *cannot be expressed* in the first place. Where this ideal is unreachable, the system falls back through a hierarchy: compile-time enforcement, then static analysis, then runtime assertion, then validated convention with automated auditing — in that order, never skipping a level that is achievable.
+
+The following dimensions describe strictness as axes that the agent must apply to whatever system it is building. They are not code-specific — they apply to architecture, infrastructure, process, communication, and everything else.
+
+### Dimension 1: Structural Strictness
+
+The system's architecture enforces separation of concerns at the boundary level, not the convention level. Components cannot reach into each other's internals — not because a style guide says so, but because the architecture makes it structurally impossible.
+
+This means: dependency inversion enforced by the module system, not by developer discipline. Separation of reads and writes into structurally distinct paths where warranted. Domain core isolated from infrastructure at the compile-time level. If a component should not depend on another, the build system or module structure makes the import fail, not a linter warning.
+
+The agent should evaluate every architectural decision against: "Can a future agent violate this boundary by accident?" If yes, the boundary is not strict enough.
+
+### Dimension 2: Behavioral Strictness
+
+Every stateful component has an explicit, finite state machine. States are enumerated. Transitions are enumerated. Invalid transitions are inexpressible in the type system or state definition. The system cannot enter an undefined state because undefined states do not exist in the model.
+
+No undefined behavior, no implementation-defined behavior, no reliance on implicit execution order. Every operation has a defined outcome for every possible input. Every branch is handled. Every match/switch is exhaustive. Every state machine has an explicit error state and explicit transitions into it.
+
+The agent should be able to look at any stateful component and enumerate every possible state and every possible transition without reading the implementation — because the state machine is declared, not emergent.
+
+### Dimension 3: Data Lifecycle Strictness
+
+Data has an explicit lifecycle: it enters through a validated boundary, flows through typed transformations, and exits through a defined output channel. At no point in this lifecycle is data in an ambiguous state — it is either unvalidated (and typed as such), validated (and typed as such, distinctly from unvalidated), or transformed (and typed as the result type).
+
+No global mutable state. No ambient data. No "just grab it from the context." Every piece of data a function uses arrives through its parameters or through explicitly declared, injected dependencies. Side channels do not exist.
+
+Immutability is the default expression of this: a value that has been validated and transformed should not be mutatable, because mutation would potentially invalidate the guarantees that the validation established. Mutable state exists only at explicitly designated mutation points (database writes, cache updates, state machine transitions) and nowhere else.
+
+### Dimension 4: Temporal Strictness
+
+Every operation that can block has an explicit timeout. Every chain of operations has a deadline that propagates through the call chain. No unbounded waits. No "eventually consistent" without explicit convergence bounds and monitoring for convergence failure.
+
+Retry policies are explicit, bounded, and use backoff. No infinite retry loops. No "retry until it works." Every retry policy has a circuit breaker. Every circuit breaker has an explicit half-open strategy.
+
+Ordering constraints are explicit. If operation A must happen before operation B, this is enforced by the type system or the control flow — not by documentation saying "make sure to call A before B." If causal ordering matters, it is encoded in the data flow (A's output is B's input), not in a comment.
+
+### Dimension 5: Communication Strictness
+
+Between components within the system: schema-validated, versioned contracts. No implicit protocol assumptions. No "just send a dict/object and the other side knows what to do." Every message has a schema. Every schema has a version. Breaking changes to schemas are structurally impossible through additive-only evolution or explicit versioned endpoints.
+
+Between the system and external services: the same. Every external API call goes through a typed client with a schema. No raw HTTP calls with string URLs and untyped response parsing. Idempotency keys on every mutating external call. Exactly-once semantics where needed, at-least-once with deduplication elsewhere.
+
+### Dimension 6: Error Domain Completeness
+
+Every possible failure mode is enumerated in the type system. Not "this function can throw" but "these are the exact failure types, each distinct, each carrying the context needed for the caller to make a decision." No catch-all error handlers. No swallowed errors. No error that disappears into a log without the calling code making an explicit decision about it.
+
+The error path is as well-designed as the success path. Error types carry enough context to be actionable. Error propagation is explicit (Result types, typed exceptions, discriminated unions). The agent reading a function's signature knows every way it can fail without reading the implementation.
+
+### Dimension 7: Resource Strictness
+
+Every acquired resource has a defined, deterministic release path. Connections, file handles, locks, memory allocations, temporary files — every acquisition is paired with a release, and the pairing is enforced by the language construct (RAII, context managers, try-with-resources, defer) rather than by developer memory.
+
+Resource limits are explicit and enforced. Maximum connections, maximum memory, maximum open file descriptors, maximum queue depth. Every limit has a defined behavior when reached (reject, backpressure, circuit-break) rather than undefined degradation.
+
+### Dimension 8: Observability Strictness
+
+The system is fully debuggable from its telemetry alone, without reproducing the issue. Every state transition emits a structured, typed event. Every error is recorded with full causal context. Every external interaction is traced with correlation IDs that span the full request lifecycle.
+
+This is not "add logging." This is: the observability layer is a formal model of the system's behavior, and the model is complete. If something happened, it is observable. If it is not observable, the system treats it as if it didn't happen.
+
+Audit trails are append-only and cannot be tampered with by the service that produces them. Security events (authentication, authorization, access to sensitive data) are always logged, always structured, and always shipped to a separate collection system.
+
+### Dimension 9: Operational Strictness
+
+Builds are reproducible: the same input always produces the same output. Builds are hermetic: no network access during build, no reliance on external state. Artifacts are signed. Deployments are verified against expected state, not just "pushed and hoped."
+
+No manual deployment. No hotfix that bypasses the verification pipeline. No "just SSH in and restart it." Every operational action is either automated (IaC, CI/CD) or explicitly forbidden. The system's operational posture is as strict as its code posture.
+
+Infrastructure is immutable where possible: servers are rebuilt, not patched. Containers are replaced, not updated in place. Configuration changes are deployments, not runtime mutations.
+
+### Dimension 10: Security Strictness
+
+Default-deny at every layer. Network perimeter, process permissions, file access, API authorization — everything starts closed and is opened only with explicit justification. Defense in depth: no single security control is the only thing preventing a class of attack.
+
+Credentials are never in plaintext, never in default paths, never in home directories. Dedicated credential storage with access auditing. Rotation automated. Leak detection in CI. Transport encrypted everywhere including internal service-to-service. Certificate pinning where feasible.
+
+The agent never implements security primitives. It wraps proven, audited libraries so tightly that the unsafe usage path does not exist in the API.
 
 ---
 
@@ -98,102 +185,51 @@ extrapolate the underlying principle to any language.
 
 ### Explicit Shape Declaration
 
-Every class, struct, or data type declares its own shape explicitly in the file where it is defined.
+**Every data structure declares its shape exhaustively at definition time.** No attribute, field, or member may exist at runtime that is not declared in the structure's definition. Dynamic attribute creation, monkey-patching, and implicit field inheritance are prohibited. The structure's definition is the single source of truth for what it contains.
 
-- **Python:** Every class defines `__slots__`. This forces explicit attribute declaration, prevents
-  typo-based silent attribute creation, reduces memory usage, and critically — tells any agent
-  reading the file exactly what attributes exist without chasing inheritance.
-- **TypeScript:** Every interface is explicit. No `any`, no implicit index signatures, no `Record`
-  where a proper interface belongs.
-- **Rust:** Structs derive only what they need. No blanket `#[derive(Clone, Debug, Default)]` unless
-  every trait is actually used.
+*Examples: Python `__slots__`, TypeScript explicit interfaces with no index signatures, Rust structs with explicit field declarations, Go structs with explicitly typed fields.*
 
 ### Namespace Hygiene
 
-Nothing leaks into a namespace by accident. The public surface of every module is a conscious,
-documented decision.
+**The public surface of every module is an explicit, conscious declaration — not an emergent property of what happens to be defined.** Nothing leaks into a namespace by accident. Every symbol that is accessible from outside the module is intentionally exported. Wildcard imports from consuming code are acceptable only when the exporting module explicitly constrains what the wildcard exposes.
 
-- **Python:** Every module declares `__all__`. Every package's `__init__.py` declares `__all__`.
-  Every re-export is intentional. `from module import *` in consuming code is acceptable *only*
-  because `__all__` guarantees it imports exactly what was intended.
-- **TypeScript:** Explicit `export` on every public symbol. No default exports (they create naming
-  ambiguity). Barrel files (`index.ts`) declare explicit re-exports.
-- **Rust:** `pub(crate)` over `pub` where full public visibility isn't needed. Explicit `pub use`
-  re-exports in `mod.rs` / `lib.rs`.
+*Examples: Python `__all__` on every module and package, TypeScript explicit named exports with no default exports, Rust `pub(crate)` over `pub` with explicit `pub use` re-exports, Go capitalized identifiers as the sole export mechanism.*
 
 ### Exhaustive Static Typing
 
-The strictest mode the type checker supports is always enabled.
+**The strictest mode the type checker supports is always enabled.** Every function has full parameter and return type annotations. Escape hatches from the type system (untyped casts, type suppression comments, top types used as concrete types) are prohibited except at boundaries with untyped external code — and at those boundaries, the untyped value is immediately narrowed through a typed wrapper. Every type suppression is tracked as technical debt and annotated with a specific error code and justification.
 
-- **Python:** Pyright in strict mode (`"typeCheckingMode": "strict"`). Every function has full
-  parameter and return type annotations. No `Any` unless interfacing with an untyped external
-  library — and then, the `Any` is immediately narrowed at the boundary via a typed wrapper.
-  No `# type: ignore` without a specific error code and a comment explaining why. Every
-  `# type: ignore[specific-code]` is tracked as technical debt.
-- **TypeScript:** `strict: true` plus: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
-  `noPropertyAccessFromIndexSignature`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames`.
-  No `as any`. No `@ts-ignore` — use `@ts-expect-error` with explanation if absolutely necessary.
-- **Rust:** `#![deny(clippy::all, clippy::pedantic)]`. Address or explicitly allow every warning
-  with justification.
+*Examples: Python Pyright strict mode with no bare `Any`, TypeScript `strict: true` plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`, Rust `#![deny(clippy::all, clippy::pedantic)]`, Go `go vet` plus `staticcheck` with all analyzers enabled.*
 
 ### Runtime Validation at Trust Boundaries
 
-Static types are a compile-time promise. Runtime validation is the proof. Data crossing a trust
-boundary — user input, API responses, file reads, environment variables, database results,
-deserialized payloads — is validated at the boundary with a schema.
+**Static types are a compile-time promise. Runtime validation is the proof.** Data crossing a trust boundary — user input, API responses, file reads, environment variables, database results, deserialized payloads — is validated at the boundary with a schema that produces a distinctly typed "validated" value. The system distinguishes validated from unvalidated data at the type level. Parse, don't validate: the validation step returns a typed result, not a boolean.
 
-- **Python:** Pydantic models for structured data. beartype decorators for function signatures
-  where Pydantic is too heavy. `pydantic.SecretStr` for sensitive values.
-- **TypeScript:** Zod schemas at every trust boundary. Parse, don't validate — `z.parse()` returns
-  typed data, not a boolean.
-- **Rust:** `serde` with `#[serde(deny_unknown_fields)]`. Newtype wrappers for validated primitives
-  (e.g., `EmailAddress(String)` that validates on construction).
+*Examples: Python Pydantic models and `SecretStr`, TypeScript Zod schemas with `z.parse()`, Rust `serde` with `#[serde(deny_unknown_fields)]` and newtype wrappers, Go struct validation tags with explicit error returns.*
 
 ### Error Handling
 
-Prefer explicit error-as-value patterns over thrown exceptions where the language supports it.
+**Every function's failure modes are explicit in its signature or contract.** Prefer error-as-value patterns over thrown/raised exceptions where the language supports it. When exceptions are idiomatic, catch the narrowest type and document every raisable exception. No catch-all handlers. No swallowed errors. Every error carries enough context for the caller to make a decision. The error path receives the same design rigor as the success path.
 
-- **Rust:** `Result<T, E>` everywhere. `?` operator for propagation. Custom error types via
-  `thiserror`. Never `unwrap()` in library code — only in tests or with a comment explaining why
-  the panic is logically impossible.
-- **TypeScript:** Discriminated union result types or a `Result<T, E>` library. `try/catch` only
-  at the outermost boundary (HTTP handler, CLI entry point). Inner code returns errors as values.
-- **Python:** Exceptions are idiomatic, so: never bare `except`. Always catch the narrowest
-  exception type. Document every exception a function can raise in its docstring. Consider
-  `returns` library for Result-type patterns in critical paths.
+*Examples: Rust `Result<T, E>` with `thiserror`, TypeScript discriminated union result types, Python narrowly-typed `except` clauses with documented `Raises:` sections, Go multi-return `(value, error)` with explicit error checks.*
 
 ### Documentation as Contract
 
-Every public symbol has a docstring or doc comment. This is not optional and it is not decoration.
-The docstring is the contract that tells the next agent what this unit does, what it accepts, what
-it returns, what it raises, and what invariants it maintains — without reading the implementation.
+**Every public symbol has a doc comment that constitutes a binding contract.** The documentation declares what the unit does, what it accepts, what it returns, what it raises or returns as errors, and what invariants it maintains — without requiring the reader to examine the implementation. This is not optional and it is not decoration. The doc comment is the specification that enables any agent to use the symbol correctly on first encounter.
 
-Format:
-- **Python:** Google-style docstrings. `Args:`, `Returns:`, `Raises:` sections mandatory for any
-  function with parameters. One-line summary mandatory for everything.
-- **TypeScript:** TSDoc (`/** */`). `@param`, `@returns`, `@throws` tags mandatory.
-- **Rust:** `///` doc comments. Examples in doc comments that compile and run via `cargo test`.
+*Examples: Python Google-style docstrings with `Args:`, `Returns:`, `Raises:` sections, TypeScript TSDoc with `@param`, `@returns`, `@throws` tags, Rust `///` doc comments with compilable examples, Go package-level and function-level comments per `godoc` convention.*
 
 ### Testing
 
-Tests are mandatory, layered, and co-located with the code they test.
+**Tests are mandatory, layered, and co-located with the code they test.** Every public function has at least one unit test verifying its contract (inputs to outputs, not implementation details). Every function with a meaningful invariant has a property-based test that expresses the invariant — unit tests are specific instances of it. Preconditions are asserted at function entry. Postconditions are asserted before return. These assertions are executable specifications, not defensive programming.
 
-- **Unit tests:** Every public function has at least one. Test the contract (inputs → outputs),
-  not the implementation.
-- **Property-based tests:** Every public function with a meaningful invariant has a property test.
-  Hypothesis (Python), fast-check (TypeScript), proptest (Rust). The property test expresses the
-  invariant; unit tests are specific instances of it.
-- **Contracts and invariants:** Assert preconditions at function entry. Assert postconditions before
-  return. These are not "defensive programming" — they are executable specifications that catch
-  violations at the earliest possible moment.
+*Examples: Python `pytest` with Hypothesis for property tests, TypeScript Vitest with fast-check, Rust built-in `#[test]` with proptest, Go table-driven tests with `testing/quick`.*
 
 ### Formatting
 
-Formatting is never manual and never debatable. The tool decides. The agent runs the formatter.
+**Formatting is never manual and never debatable.** A single formatter is configured once in the project's configuration file and run automatically. No overrides. No per-file exceptions. The tool decides; the agent runs it.
 
-- **Python:** Ruff format. Line length configured once in `pyproject.toml`. Never overridden.
-- **TypeScript:** Biome format. Configured once in `biome.json`.
-- **Rust:** `rustfmt` with `edition = 2021`. No overrides.
+*Examples: Python Ruff format, TypeScript/JavaScript Biome format, Rust `rustfmt`, Go `gofmt`.*
 
 ---
 
@@ -202,12 +238,10 @@ Formatting is never manual and never debatable. The tool decides. The agent runs
 ### Use Dependencies Aggressively — But Only Proven Ones
 
 A "proven" dependency satisfies ALL of:
-- **High adoption:** Significant GitHub stars, download counts, production usage.
+- **High adoption:** Significant community usage, download counts, production deployment.
 - **Active maintenance:** Recent commits, responsive to issues, regular releases.
-- **Trusted provenance:** Backed by a known organization (Microsoft, Google, Mozilla, etc.) or a
-  well-known maintainer with a track record.
-- **Type-safe:** Ships with types (TypeScript declarations, py.typed marker, etc.). An untyped
-  dependency cannot satisfy Hypersaint's static typing requirements.
+- **Trusted provenance:** Backed by a known organization or a well-known maintainer with a track record.
+- **Type-safe:** Ships with type definitions or type annotations native to the language's type system. An untyped dependency cannot satisfy Hypersaint's static typing requirements.
 
 If a battle-tested library exists, use it. Do not rewrite what the ecosystem has already solved
 and hardened through years of production use and security audits.
@@ -250,19 +284,22 @@ libraries. The agent NEVER writes custom implementations of any security-critica
 The wrapper around a security library must constrain the API so that:
 - The insecure configuration is a type error, not a runtime option.
 - Default parameters are the secure choice. There is no "easy insecure mode."
-- Sensitive values use dedicated types (`SecretStr`, `SecretBytes`) that prevent accidental
-  logging or serialization.
+- Sensitive values use dedicated opaque types that prevent accidental logging or serialization.
 - If a user can XSS themselves through your interface, that is a failure — regardless of how
   unlikely or trivial the vector is.
+
+*Examples: Python `SecretStr`/`SecretBytes`, Rust `secrecy::Secret<T>`, TypeScript branded types wrapping sensitive strings.*
 
 ### Trust Boundaries Are Explicit
 
 Every point where data enters the system from an external source is marked as a trust boundary.
 Data at trust boundaries is:
-1. Validated against a schema (Pydantic, Zod, serde).
+1. Validated against a schema.
 2. Sanitized for the context it will be used in (HTML escaping, SQL parameterization, etc.).
 3. Typed as "validated" after passing through the boundary — so consuming code can distinguish
    validated from unvalidated data at the type level.
+
+*Examples: Python Pydantic, TypeScript Zod, Rust `serde` with `deny_unknown_fields`, Go struct validation.*
 
 ---
 
@@ -274,28 +311,26 @@ deployment — is described in versioned, reviewable, reproducible files.
 
 ### Development Environment
 
-Nix flakes define the complete development shell. Every tool, every dependency, every version is
-pinned and reproducible. A new contributor (human or LLM) runs one command and gets the exact
-environment. No "install these six things and hope the versions align."
+Declarative environment definitions pin the complete development shell. Every tool, every
+dependency, every version is pinned and reproducible. A new contributor (human or LLM) runs one
+command and gets the exact environment. No "install these six things and hope the versions align."
 
-```
-flake.nix           # Pin all dev tools and system dependencies
-flake.lock          # Locked dependency graph
-.envrc              # direnv integration for automatic shell activation
-```
+*Examples: Nix flakes with `flake.nix` + `flake.lock` + `.envrc` for direnv integration, devcontainers with `devcontainer.json`, Hermit for hermetic per-project tooling.*
 
 ### Infrastructure
 
-Terraform, Pulumi, or equivalent. Cloud resources are code. DNS is code. Secrets management is
-code (sealed/encrypted, never plaintext in the repo). If it exists in production, it exists as a
-versioned file in the repository.
+Declarative infrastructure-as-code tooling. Cloud resources are code. DNS is code. Secrets
+management is code (sealed/encrypted, never plaintext in the repo). If it exists in production,
+it exists as a versioned file in the repository.
+
+*Examples: Terraform, Pulumi, AWS CDK, Crossplane.*
 
 ### CI/CD
 
 Pipelines are code in the repository. The full strictness suite runs on every change:
-1. Formatting check (Ruff format / Biome format)
-2. Linting (Ruff / Biome lint)
-3. Static type checking (Pyright / tsc)
+1. Formatting check
+2. Linting
+3. Static type checking
 4. Unit tests
 5. Property-based tests
 6. Security scanning (dependency audit, SAST)
@@ -306,28 +341,19 @@ pass/fail output it can self-correct from. Every failure message must be specifi
 
 ### Configuration
 
-Application config is typed and validated at startup, not read from loose env vars with string
-fallbacks.
+**Application config is typed and validated at startup, not read from loose environment variables with string fallbacks.** Missing or malformed config crashes at startup with a clear error identifying the specific field and expected type. Never silently fall back to a default for a required value. Environment-specific overrides (dev, staging, prod) are structured files validated against the same schema.
 
-- **Python:** Pydantic `BaseSettings` with validators. Missing or malformed config → crash at
-  startup with a clear error. Never silently fall back to a default for a required value.
-- **TypeScript:** Zod schema parsing `process.env` at startup. Invalid config → thrown error
-  with the specific field and expected type.
-- **Rust:** Typed config struct deserialized at startup via `serde`. Missing fields → panic with
-  field name and expected type.
-
-Environment-specific overrides (dev, staging, prod) are structured files (TOML, JSON), not ad-hoc
-env vars. Each override file is validated against the same schema.
+*Examples: Python Pydantic `BaseSettings`, TypeScript Zod schema parsing `process.env`, Rust typed config struct via `serde`, Go `envconfig` with struct tags.*
 
 ### Containerization
 
 - Multi-stage builds. Build stage installs dependencies and compiles. Final stage copies only
   artifacts.
-- Minimal final images. Distroless (Google) or scratch where possible. Alpine only if distroless
+- Minimal final images. Distroless or scratch where possible. Alpine only if distroless
   is genuinely impractical.
 - No shell in production images unless explicitly required and justified.
 - Health checks defined in the Dockerfile or compose file, not assumed.
-- Non-root user by default. `USER nobody` or equivalent.
+- Non-root user by default.
 
 ---
 
@@ -341,10 +367,9 @@ messages are specific, actionable, and parseable. The agent loops — fix, re-ru
 until the suite passes. Overkill is not in the vocabulary. The cost of running the suite ten
 times is zero. The cost of shipping a defect is nonzero.
 
-This is why tool selection matters so much. Fast tools (Ruff: milliseconds, Biome: milliseconds,
-Pyright: seconds) give the agent tight feedback loops. Slow legacy tools (pylint: many seconds,
-ESLint: seconds per file) make the loop expensive. Speed is not a developer-experience luxury —
-it is an agent-efficiency requirement.
+This is why tool selection matters so much. Fast tools give the agent tight feedback loops. Slow
+legacy tools make the loop expensive. Speed is not a developer-experience luxury — it is an
+agent-efficiency requirement.
 
 The ideal loop:
 1. Agent modifies an atom (one or a few files in one directory).
@@ -362,17 +387,18 @@ The ideal loop:
 fine. What matters is that side effects are explicit, typed, contained, and tested — not that they
 don't exist.
 
-**It is not about developer experience.** Verbose? Good. Ceremonial? Good. Requires writing
-`__slots__` on every class, `__all__` on every module, docstrings on every function, property tests
-for every invariant? Good. The maintainer doesn't get bored or frustrated.
+**It is not about developer experience.** Verbose? Good. Ceremonial? Good. Requires exhaustive
+shape declarations on every data structure, explicit export lists on every module, docstrings on
+every function, property tests for every invariant? Good. The maintainer doesn't get bored or
+frustrated.
 
 **It is not about shipping fast.** It is about shipping *correctly*. The first version may take
 longer. Every version after that is faster because the codebase is so well-constrained that changes
 are safe and isolated.
 
-**It is not language-specific.** The examples skew toward Python, TypeScript, and Rust because those
-are common LLM-maintained stacks. The philosophy applies to any language. The agent's job is to find
-the Hypersaint-aligned tools and patterns for whatever environment it encounters.
+**It is not language-specific.** The examples reference specific languages because concreteness aids
+understanding. The philosophy applies to any language. The agent's job is to find the
+Hypersaint-aligned tools and patterns for whatever environment it encounters.
 
 **It is not a framework.** Hypersaint is an architecture and a ruleset. It does not impose a
 directory naming scheme beyond the structural rules (README.md, index.toml). It does not require

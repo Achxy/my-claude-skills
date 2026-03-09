@@ -156,8 +156,13 @@ IndexManifest:
   exports: list[str]                  # Symbol names
   dependencies: dict[str, list[str]]  # import_path → [symbols]
   circular: dict[str, str]            # import_path → justification
+  references: dict[str, list[Reference]]  # local_file → [Reference]
   integrity: dict[str, str]           # filename → sha256 hash
   children: dict[str, str]            # dirname → description
+
+Reference:
+  path: str                               # Repo-relative path to referenced file
+  rel: str                                # Relationship type
 ```
 
 ### Validation
@@ -168,6 +173,7 @@ On parse, validate:
 - All values are the expected types.
 - If `[circular]` exists, values are non-empty strings (justifications).
 - If `[children]` exists, every listed directory actually exists on disk.
+- If `[references]` exists, every `path` must point to an existing file. Every `rel` must be from the known relationship types.
 
 Return validation errors as structured data, not exceptions.
 
@@ -198,6 +204,7 @@ atom's export/dependency information.
    - The children dict (if non-leaf)
    - The description (if present in index.toml)
    - Whether circular dependencies exist (boolean flag — details loaded separately)
+   - Soft references summary (count and relationship types, if any exist)
 
 **Response format:**
 Return as structured text. Example:
@@ -221,6 +228,10 @@ Handles all authentication and authorization flows.
 
 ## Circular Dependencies
 None declared.
+
+## Soft References
+- docs/api_reference.html documents src/features/auth/login/login.py
+- config/auth_limits.toml configures src/features/auth/login/login.py
 ```
 
 ### `readme`
@@ -312,6 +323,7 @@ src/
 | `path` | string | Yes | Path relative to repo root |
 | `direction` | string | No | `outgoing` (what this atom depends on), `incoming` (what depends on this atom), or `both`. Default: `both`. |
 | `recursive` | boolean | No | If true, follow dependency chains transitively. Default: false. |
+| `include_references` | boolean | No | Include soft reference relationships alongside import dependencies. Default: true. |
 
 **Behavior:**
 1. Read the target atom's `index.toml` for outgoing dependencies.
@@ -338,6 +350,11 @@ src/
 ## Circular Dependencies
 - src.features.auth.session ↔ src.features.auth.login
   Reason: Session imports LoginError for error propagation.
+
+## Soft References
+- config/auth_limits.toml configures login.py
+- docs/api_reference.html documents login.py
+- login.py is documented-by docs/api_reference.html
 ```
 
 ### `integrity`

@@ -10,7 +10,8 @@ Usage:
 Arguments:
     target_dir  Path to the directory to generate index.toml for.
     --update    If set, preserve existing [exports], [dependencies], [circular],
-                [children], and description fields. Only regenerate [integrity].
+                [children], [references], and description fields. Only regenerate
+                [integrity].
                 If not set, generate a skeleton index.toml with empty tables.
 
 Behavior:
@@ -19,8 +20,8 @@ Behavior:
     - Computes SHA-256 hash of each file.
     - For subdirectories, computes SHA-256 of their index.toml (errors if missing).
     - Writes index.toml with sorted [integrity] entries.
-    - In --update mode: reads existing index.toml, preserves non-integrity tables,
-      replaces [integrity] with freshly computed hashes.
+    - In --update mode: reads existing index.toml, preserves non-integrity tables
+      (including [references]), replaces [integrity] with freshly computed hashes.
 
 Ignored Patterns:
     .git, __pycache__, node_modules, .mypy_cache, .ruff_cache, .pytest_cache,
@@ -39,8 +40,20 @@ import hashlib
 import os
 import sys
 from pathlib import Path
+from typing import Final
 
-IGNORE_DIRS: frozenset[str] = frozenset({
+__all__: list[str] = [
+    "sha256_file",
+    "sha256_directory",
+    "should_ignore",
+    "collect_entries",
+    "read_existing_toml",
+    "format_toml",
+    "generate_index_toml",
+    "main",
+]
+
+IGNORE_DIRS: Final[frozenset[str]] = frozenset({
     ".git",
     "__pycache__",
     "node_modules",
@@ -57,12 +70,12 @@ IGNORE_DIRS: frozenset[str] = frozenset({
     "*.egg-info",
 })
 
-IGNORE_FILES: frozenset[str] = frozenset({
+IGNORE_FILES: Final[frozenset[str]] = frozenset({
     ".DS_Store",
     "Thumbs.db",
 })
 
-IGNORE_EXTENSIONS: frozenset[str] = frozenset({
+IGNORE_EXTENSIONS: Final[frozenset[str]] = frozenset({
     ".pyc",
     ".pyo",
     ".pyd",
@@ -72,7 +85,14 @@ IGNORE_EXTENSIONS: frozenset[str] = frozenset({
 
 
 def sha256_file(path: Path) -> str:
-    """Compute SHA-256 hex digest of a file's raw bytes."""
+    """Compute SHA-256 hex digest of a file's raw bytes.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        Hex-encoded SHA-256 digest.
+    """
     sha = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -81,7 +101,17 @@ def sha256_file(path: Path) -> str:
 
 
 def sha256_directory(path: Path) -> str:
-    """Compute hash of a directory by hashing its index.toml content."""
+    """Compute hash of a directory by hashing its index.toml content.
+
+    Args:
+        path: Path to the directory.
+
+    Returns:
+        SHA-256 digest of the directory's index.toml.
+
+    Raises:
+        SystemExit: If the directory is missing its index.toml.
+    """
     index_path = path / "index.toml"
     if not index_path.exists():
         print(
@@ -94,7 +124,15 @@ def sha256_directory(path: Path) -> str:
 
 
 def should_ignore(name: str, is_dir: bool) -> bool:
-    """Check if a file or directory should be ignored."""
+    """Check if a file or directory should be ignored.
+
+    Args:
+        name: Name of the file or directory.
+        is_dir: Whether the entry is a directory.
+
+    Returns:
+        True if the entry should be ignored.
+    """
     if is_dir:
         return name in IGNORE_DIRS or name.endswith(".egg-info")
     if name in IGNORE_FILES:
@@ -103,7 +141,14 @@ def should_ignore(name: str, is_dir: bool) -> bool:
 
 
 def collect_entries(target_dir: Path) -> dict[str, str]:
-    """Collect all sibling files/dirs and their hashes, excluding index.toml itself."""
+    """Collect all sibling files/dirs and their hashes, excluding index.toml itself.
+
+    Args:
+        target_dir: Path to the directory to scan.
+
+    Returns:
+        Dictionary mapping filenames to SHA-256 hashes.
+    """
     entries: dict[str, str] = {}
 
     for item in sorted(target_dir.iterdir()):
@@ -125,7 +170,14 @@ def collect_entries(target_dir: Path) -> dict[str, str]:
 
 
 def read_existing_toml(path: Path) -> dict[str, object]:
-    """Read existing index.toml and return parsed tables (excluding [integrity])."""
+    """Read existing index.toml and return parsed tables (excluding [integrity]).
+
+    Args:
+        path: Path to the existing index.toml file.
+
+    Returns:
+        Parsed TOML data with the integrity table removed.
+    """
     if not path.exists():
         return {}
 
@@ -142,7 +194,15 @@ def read_existing_toml(path: Path) -> dict[str, object]:
 
 
 def format_toml(data: dict[str, object], integrity: dict[str, str]) -> str:
-    """Format a complete index.toml string from data tables and integrity hashes."""
+    """Format a complete index.toml string from data tables and integrity hashes.
+
+    Args:
+        data: Dictionary of non-integrity tables to serialize.
+        integrity: Dictionary mapping filenames to SHA-256 hashes.
+
+    Returns:
+        Formatted TOML string.
+    """
     lines: list[str] = []
 
     # Top-level description (optional)
@@ -163,18 +223,18 @@ def format_toml(data: dict[str, object], integrity: dict[str, str]) -> str:
     deps = data.get("dependencies", {})
     lines.append("[dependencies]")
     if isinstance(deps, dict) and deps:
-        for path, syms in sorted(deps.items()):
+        for dep_path, syms in sorted(deps.items()):
             if isinstance(syms, list):
                 syms_str = ", ".join(f'"{s}"' for s in syms)
-                lines.append(f'"{path}" = [{syms_str}]')
+                lines.append(f'"{dep_path}" = [{syms_str}]')
     lines.append("")
 
     # [circular] (only if present)
     circular = data.get("circular", {})
     if isinstance(circular, dict) and circular:
         lines.append("[circular]")
-        for path, justification in sorted(circular.items()):
-            lines.append(f'"{path}" = "{justification}"')
+        for circ_path, justification in sorted(circular.items()):
+            lines.append(f'"{circ_path}" = "{justification}"')
         lines.append("")
 
     # [children] (only if present)
@@ -184,6 +244,16 @@ def format_toml(data: dict[str, object], integrity: dict[str, str]) -> str:
         for name, desc in sorted(children.items()):
             lines.append(f'{name} = "{desc}"')
         lines.append("")
+
+    # [references] (only if present)
+    references = data.get("references", {})
+    if isinstance(references, dict) and references:
+        for ref_name, ref_data in sorted(references.items()):
+            lines.append(f"[references.{ref_name}]")
+            if isinstance(ref_data, dict):
+                for key, val in sorted(ref_data.items()):
+                    lines.append(f'{key} = "{val}"')
+            lines.append("")
 
     # [integrity]
     lines.append("[integrity]")
@@ -195,7 +265,12 @@ def format_toml(data: dict[str, object], integrity: dict[str, str]) -> str:
 
 
 def generate_index_toml(target_dir: Path, *, update: bool = False) -> None:
-    """Generate or update index.toml for the target directory."""
+    """Generate or update index.toml for the target directory.
+
+    Args:
+        target_dir: Path to the directory.
+        update: If True, preserve existing non-integrity tables.
+    """
     index_path = target_dir / "index.toml"
 
     # Collect integrity hashes
@@ -221,7 +296,7 @@ def generate_index_toml(target_dir: Path, *, update: bool = False) -> None:
 
 
 def main() -> None:
-    """Entry point."""
+    """Entry point for the index.toml generator."""
     if len(sys.argv) < 2:
         print("Usage: python index_toml_generator.py <target_dir> [--update]", file=sys.stderr)
         sys.exit(1)

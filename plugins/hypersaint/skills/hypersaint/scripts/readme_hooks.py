@@ -4,10 +4,15 @@ Given a set of changed files, determines ALL directories whose README.md integri
 blocks need updating, collects them top-down, and updates them in the correct order
 (leaf-first, then propagate upward to root).
 
+When running in ``--changed`` mode, the script also checks whether any changed file
+is a soft reference target in another atom's ``[references]`` table and emits a
+warning so the referencing atom can be reviewed for content accuracy.
+
 Usage:
     python readme_hooks.py <repo_root> --changed <file1> [file2 ...]
     python readme_hooks.py <repo_root> --directory <dir1> [dir2 ...]
     python readme_hooks.py <repo_root> --all
+    python readme_hooks.py <repo_root> --all --dry-run
 
 Arguments:
     repo_root       Path to the repository root.
@@ -38,6 +43,10 @@ Strategy:
        index.toml is now stale. Re-run index_toml_generator in --update mode for
        each affected directory.
 
+    5. SOFT REFERENCE WARNINGS: In --changed mode, after updating directories, scan
+       all index.toml [references] tables to find entries whose path matches a changed
+       file. Emit a warning for each match so referencing atoms can be reviewed.
+
 Exit Codes:
     0  Success (or dry-run)
     1  Invalid arguments
@@ -52,8 +61,29 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import Final
 
-IGNORE_DIRS: frozenset[str] = frozenset({
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]
+
+__all__: list[str] = [
+    "sha256_file",
+    "sha256_directory",
+    "should_ignore",
+    "compute_integrity_entries",
+    "format_integrity_block",
+    "update_readme_integrity",
+    "find_affected_directories",
+    "find_all_directories",
+    "topological_sort_leaf_first",
+    "update_directory",
+    "check_soft_reference_targets",
+    "main",
+]
+
+IGNORE_DIRS: Final[frozenset[str]] = frozenset({
     ".git",
     "__pycache__",
     "node_modules",
@@ -70,12 +100,12 @@ IGNORE_DIRS: frozenset[str] = frozenset({
     ".github",
 })
 
-IGNORE_FILES: frozenset[str] = frozenset({
+IGNORE_FILES: Final[frozenset[str]] = frozenset({
     ".DS_Store",
     "Thumbs.db",
 })
 
-IGNORE_EXTENSIONS: frozenset[str] = frozenset({
+IGNORE_EXTENSIONS: Final[frozenset[str]] = frozenset({
     ".pyc",
     ".pyo",
     ".pyd",
@@ -83,12 +113,19 @@ IGNORE_EXTENSIONS: frozenset[str] = frozenset({
     ".dylib",
 })
 
-INTEGRITY_START = "<!-- @hs:integrity -->"
-INTEGRITY_END = "<!-- @/hs:integrity -->"
+INTEGRITY_START: Final[str] = "<!-- @hs:integrity -->"
+INTEGRITY_END: Final[str] = "<!-- @/hs:integrity -->"
 
 
 def sha256_file(path: Path) -> str:
-    """Compute SHA-256 hex digest of a file's raw bytes."""
+    """Compute SHA-256 hex digest of a file's raw bytes.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        Hex-encoded SHA-256 digest.
+    """
     sha = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -97,7 +134,14 @@ def sha256_file(path: Path) -> str:
 
 
 def sha256_directory(path: Path) -> str:
-    """Compute hash of a directory via its index.toml."""
+    """Compute hash of a directory via its index.toml.
+
+    Args:
+        path: Path to the directory.
+
+    Returns:
+        SHA-256 digest of the directory's index.toml, or a sentinel string if missing.
+    """
     index_path = path / "index.toml"
     if not index_path.exists():
         return "MISSING_INDEX_TOML"
@@ -105,7 +149,15 @@ def sha256_directory(path: Path) -> str:
 
 
 def should_ignore(name: str, is_dir: bool) -> bool:
-    """Check if a file or directory should be ignored."""
+    """Check if a file or directory should be ignored.
+
+    Args:
+        name: Name of the file or directory.
+        is_dir: Whether the entry is a directory.
+
+    Returns:
+        True if the entry should be ignored.
+    """
     if is_dir:
         return name in IGNORE_DIRS or name.endswith(".egg-info")
     if name in IGNORE_FILES:
@@ -114,7 +166,14 @@ def should_ignore(name: str, is_dir: bool) -> bool:
 
 
 def compute_integrity_entries(directory: Path) -> dict[str, str]:
-    """Compute hashes for all siblings of README.md in a directory (excluding README.md)."""
+    """Compute hashes for all siblings of README.md in a directory (excluding README.md).
+
+    Args:
+        directory: Path to the directory to scan.
+
+    Returns:
+        Dictionary mapping filenames to SHA-256 hashes.
+    """
     entries: dict[str, str] = {}
 
     for item in sorted(directory.iterdir()):
@@ -136,7 +195,14 @@ def compute_integrity_entries(directory: Path) -> dict[str, str]:
 
 
 def format_integrity_block(entries: dict[str, str]) -> str:
-    """Format entries as a markdown integrity table."""
+    """Format entries as a markdown integrity table.
+
+    Args:
+        entries: Dictionary mapping filenames to SHA-256 hashes.
+
+    Returns:
+        Formatted markdown integrity block string.
+    """
     lines: list[str] = [
         INTEGRITY_START,
         "## Integrity",
@@ -153,7 +219,15 @@ def format_integrity_block(entries: dict[str, str]) -> str:
 
 
 def update_readme_integrity(readme_path: Path, entries: dict[str, str]) -> bool:
-    """Update the integrity block in a README.md. Returns True if changed."""
+    """Update the integrity block in a README.md.
+
+    Args:
+        readme_path: Path to the README.md file.
+        entries: Dictionary mapping filenames to SHA-256 hashes.
+
+    Returns:
+        True if the file was changed.
+    """
     if not readme_path.exists():
         return False
 
@@ -189,6 +263,13 @@ def find_affected_directories(
     A directory is affected if:
     1. It directly contains a changed file.
     2. Any of its child directories were affected (propagation upward).
+
+    Args:
+        repo_root: Path to the repository root.
+        changed_files: List of absolute paths to changed files.
+
+    Returns:
+        Set of directory paths that need updating.
     """
     affected: set[Path] = set()
 
@@ -211,7 +292,14 @@ def find_affected_directories(
 
 
 def find_all_directories(repo_root: Path) -> set[Path]:
-    """Find all Hypersaint-managed directories (those with README.md or index.toml)."""
+    """Find all Hypersaint-managed directories (those with README.md or index.toml).
+
+    Args:
+        repo_root: Path to the repository root.
+
+    Returns:
+        Set of managed directory paths.
+    """
     result: set[Path] = set()
 
     for dirpath, dirnames, _filenames in os.walk(repo_root):
@@ -228,14 +316,26 @@ def find_all_directories(repo_root: Path) -> set[Path]:
 
 
 def topological_sort_leaf_first(directories: set[Path]) -> list[Path]:
-    """Sort directories deepest-first so leaf updates happen before parent updates."""
+    """Sort directories deepest-first so leaf updates happen before parent updates.
+
+    Args:
+        directories: Set of directory paths.
+
+    Returns:
+        Sorted list of directory paths, deepest first.
+    """
     return sorted(directories, key=lambda p: len(p.parts), reverse=True)
 
 
 def update_directory(directory: Path, *, dry_run: bool = False) -> tuple[bool, bool]:
     """Update README.md and index.toml integrity for a single directory.
 
-    Returns (readme_changed, index_changed).
+    Args:
+        directory: Path to the directory to update.
+        dry_run: If True, only print what would be done without writing.
+
+    Returns:
+        Tuple of (readme_changed, index_changed).
     """
     readme_path = directory / "README.md"
     index_path = directory / "index.toml"
@@ -268,8 +368,65 @@ def update_directory(directory: Path, *, dry_run: bool = False) -> tuple[bool, b
     return readme_changed, index_changed
 
 
+def check_soft_reference_targets(
+    repo_root: Path,
+    changed_files: list[Path],
+    managed_dirs: set[Path],
+) -> None:
+    """Check if changed files are soft reference targets and emit warnings.
+
+    Parses all index.toml files in managed directories looking for ``[references]``
+    entries whose ``path`` matches a changed file. For each match, prints a warning
+    so the referencing atom can be reviewed for content accuracy.
+
+    Args:
+        repo_root: Path to the repository root.
+        changed_files: List of absolute paths to changed files.
+        managed_dirs: Set of all managed directory paths.
+    """
+    # Build set of changed relative paths for fast lookup
+    changed_rel: set[str] = set()
+    for cf in changed_files:
+        try:
+            changed_rel.add(str(cf.relative_to(repo_root)))
+        except ValueError:
+            continue
+
+    if not changed_rel:
+        return
+
+    for directory in managed_dirs:
+        index_path = directory / "index.toml"
+        if not index_path.exists():
+            continue
+
+        try:
+            with index_path.open("rb") as f:
+                data = tomllib.load(f)
+        except Exception:
+            continue
+
+        references = data.get("references", {})
+        if not isinstance(references, dict) or not references:
+            continue
+
+        referencing_rel = str(index_path.relative_to(repo_root))
+
+        for _ref_name, ref_data in references.items():
+            if not isinstance(ref_data, dict):
+                continue
+
+            ref_path = ref_data.get("path", "")
+            if ref_path and ref_path in changed_rel:
+                print(
+                    f"SOFT_REFERENCE_TARGET_CHANGED: {referencing_rel} references "
+                    f"{ref_path} which was modified. Review {referencing_rel} "
+                    f"for content accuracy."
+                )
+
+
 def main() -> None:
-    """Entry point."""
+    """Entry point for the README hooks updater."""
     if len(sys.argv) < 3:
         print(
             "Usage:\n"
@@ -288,6 +445,8 @@ def main() -> None:
 
     dry_run = "--dry-run" in sys.argv
     args = [a for a in sys.argv[2:] if a != "--dry-run"]
+
+    changed_paths: list[Path] = []
 
     if "--all" in args:
         directories = find_all_directories(repo_root)
@@ -329,6 +488,10 @@ def main() -> None:
             readme_count += 1
         if index_changed:
             index_count += 1
+
+    # Soft reference target warnings (only in --changed mode)
+    if changed_paths:
+        check_soft_reference_targets(repo_root, changed_paths, directories)
 
     print()
     print(f"Summary: {readme_count} READMEs updated, {index_count} index.toml files updated.")
